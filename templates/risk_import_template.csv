@@ -1,0 +1,4 @@
+Risk ID,Key Business Process,Risk Description,Category,Causes,Consequence,Likelihood,Impact,Controls,Control Rating,Residual Likelihood,Residual Impact,Treatment Option,Treatment Actions,Timeframe,Risk Owner,Status
+OPR-001,Procurement,Supplier delivery failure,Operational,Single supplier dependency,Stock-outs disrupting operations,3,4,Dual supplier policy,Partial,2,3,Treat,Onboard backup supplier Q2 2026,Short-term,Procurement Manager,Open
+FIN-001,Financial Reporting,Material misstatement risk,Financial Management,Weak internal controls,Regulatory penalties,2,5,External audit; internal review,Effective,1,4,Treat,Strengthen reconciliation controls,Ongoing,CFO,In Progress
+TEC-001,IT Infrastructure,Cybersecurity breach,Technological,Outdated systems; phishing,Data loss; reputational damage,4,5,Firewall; antivirus; pen testing,Partial,2,4,Treat,Zero-trust architecture rollout,Medium-term,IT Manager,In Progress
