@@ -16,10 +16,16 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  function portalPath(role) {
+    if (role === "super_admin") return "/super-admin";
+    if (role === "admin") return "/admin";
+    return "/staff";
+  }
+
   // Already authenticated — redirect
   if (isAuthenticated) {
     const user = useAppStore.getState().user;
-    navigate(user?.role === "admin" ? "/dashboard" : "/department/register", { replace: true });
+    navigate(portalPath(user?.role), { replace: true });
     return null;
   }
 
@@ -34,7 +40,7 @@ export default function Login() {
       const data = await login(email, password);
       setAuth(data.user, data.access_token);
       toast.success(`Welcome back, ${data.user.full_name}!`);
-      navigate(data.user.role === "admin" ? "/dashboard" : "/department/register", { replace: true });
+      navigate(portalPath(data.user.role), { replace: true });
     } catch (err) {
       const msg = err.response?.data?.detail || "Invalid email or password";
       toast.error(msg);

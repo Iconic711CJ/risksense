@@ -1,58 +1,50 @@
-import { createBrowserRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import useAppStore from "../store/useAppStore";
-import AppShell from "../components/layout/AppShell";
 
-// Lazy-load pages for code splitting
+// ── Lazy imports ──────────────────────────────────────────────────────────────
 const Login = lazy(() => import("../pages/Login"));
-const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
-const DepartmentsOverview = lazy(() => import("../pages/DepartmentsOverview"));
-const DeptRegister = lazy(() => import("../pages/DeptRegister"));
-const KanbanPage = lazy(() => import("../pages/KanbanPage"));
-const AddRisk = lazy(() => import("../pages/AddRisk"));
-const AuditTrail = lazy(() => import("../pages/AuditTrail"));
-const UserManagement = lazy(() => import("../pages/UserManagement"));
+
+// Super Admin portal
+const SuperAdminShell   = lazy(() => import("../portals/super-admin/SuperAdminShell"));
+const SADashboard       = lazy(() => import("../portals/super-admin/SADashboard"));
+const SAUsers           = lazy(() => import("../portals/super-admin/SAUsers"));
+const SADepartments     = lazy(() => import("../portals/super-admin/SADepartments"));
+const SAAudit           = lazy(() => import("../portals/super-admin/SAAudit"));
+
+// Admin portal
+const AdminShell        = lazy(() => import("../portals/admin/AdminShell"));
+const AdminDashboard    = lazy(() => import("../portals/admin/AdminDashboard"));
+const AdminStaff        = lazy(() => import("../portals/admin/AdminStaff"));
+const AdminRisks        = lazy(() => import("../portals/admin/AdminRisks"));
+const AdminDepts        = lazy(() => import("../portals/admin/AdminDepts"));
+const AdminAudit        = lazy(() => import("../portals/admin/AdminAudit"));
+const AdminAddRisk      = lazy(() => import("../portals/admin/AdminAddRisk"));
+
+// Staff portal
+const StaffShell        = lazy(() => import("../portals/staff/StaffShell"));
+const StaffDashboard    = lazy(() => import("../portals/staff/StaffDashboard"));
+const StaffRisks        = lazy(() => import("../portals/staff/StaffRisks"));
+const StaffKanban       = lazy(() => import("../portals/staff/StaffKanban"));
+const StaffAddRisk      = lazy(() => import("../portals/staff/StaffAddRisk"));
 
 // ── Loading fallback ──────────────────────────────────────────────────────────
 function PageLoader() {
   return (
-    <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+    <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-        <p className="text-sm text-muted-foreground font-medium">Loading...</p>
+        <div className="w-8 h-8 rounded-full border-2 border-[#064E3B] border-t-transparent animate-spin" />
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading...</p>
       </div>
     </div>
   );
 }
 
-// ── Route guards ──────────────────────────────────────────────────────────────
-function ProtectedRoute() {
-  const isAuthenticated = useAppStore((s) => s.isAuthenticated);
-  const loading = useAppStore((s) => s.loading);
-
-  if (loading) return <PageLoader />;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-
-  return (
-    <AppShell>
-      <Suspense fallback={<PageLoader />}>
-        <Outlet />
-      </Suspense>
-    </AppShell>
-  );
+function Wrap({ children }) {
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
-function AdminRoute() {
-  const user = useAppStore((s) => s.user);
-  if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "admin") return <Navigate to="/department/register" replace />;
-  return (
-    <Suspense fallback={<PageLoader />}>
-      <Outlet />
-    </Suspense>
-  );
-}
-
+// ── Root redirect — routes by role ────────────────────────────────────────────
 function RootRedirect() {
   const user = useAppStore((s) => s.user);
   const loading = useAppStore((s) => s.loading);
@@ -60,47 +52,104 @@ function RootRedirect() {
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
 
-  return user.role === "admin"
-    ? <Navigate to="/dashboard" replace />
-    : <Navigate to="/department/register" replace />;
+  if (user.role === "super_admin") return <Navigate to="/super-admin" replace />;
+  if (user.role === "admin") return <Navigate to="/admin" replace />;
+  return <Navigate to="/staff" replace />;
+}
+
+// ── Portal guards ─────────────────────────────────────────────────────────────
+function SuperAdminGuard() {
+  const user = useAppStore((s) => s.user);
+  const loading = useAppStore((s) => s.loading);
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "super_admin") return <Navigate to="/" replace />;
+  return (
+    <Wrap>
+      <SuperAdminShell />
+    </Wrap>
+  );
+}
+
+function AdminGuard() {
+  const user = useAppStore((s) => s.user);
+  const loading = useAppStore((s) => s.loading);
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!["admin", "super_admin"].includes(user.role)) return <Navigate to="/staff" replace />;
+  return (
+    <Wrap>
+      <AdminShell />
+    </Wrap>
+  );
+}
+
+function StaffGuard() {
+  const user = useAppStore((s) => s.user);
+  const loading = useAppStore((s) => s.loading);
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  return (
+    <Wrap>
+      <StaffShell />
+    </Wrap>
+  );
 }
 
 // ── Router config ─────────────────────────────────────────────────────────────
 const router = createBrowserRouter([
   {
     path: "/login",
-    element: (
-      <Suspense fallback={<PageLoader />}>
-        <Login />
-      </Suspense>
-    ),
+    element: <Wrap><Login /></Wrap>,
   },
+
+  // Root → redirect by role
   {
     path: "/",
-    element: <ProtectedRoute />,
+    element: <RootRedirect />,
+  },
+
+  // ── Super Admin portal ──────────────────────────────────────────────────────
+  {
+    path: "/super-admin",
+    element: <SuperAdminGuard />,
     children: [
-      { index: true, element: <RootRedirect /> },
-
-      // Admin-only routes
-      {
-        element: <AdminRoute />,
-        children: [
-          { path: "dashboard", element: <AdminDashboard /> },
-          { path: "departments", element: <DepartmentsOverview /> },
-          { path: "departments/:deptId", element: <DeptRegister /> },
-          { path: "audit", element: <AuditTrail /> },
-          { path: "users", element: <UserManagement /> },
-        ],
-      },
-
-      // Shared routes (dept user + admin)
-      { path: "department/register", element: <DeptRegister /> },
-      { path: "department/kanban", element: <KanbanPage /> },
-      { path: "departments/:deptId/kanban", element: <KanbanPage /> },
-      { path: "risks/new", element: <AddRisk /> },
-      { path: "risks/:id/edit", element: <AddRisk /> },
+      { index: true, element: <Wrap><SADashboard /></Wrap> },
+      { path: "users", element: <Wrap><SAUsers /></Wrap> },
+      { path: "departments", element: <Wrap><SADepartments /></Wrap> },
+      { path: "audit", element: <Wrap><SAAudit /></Wrap> },
     ],
   },
+
+  // ── Admin portal ────────────────────────────────────────────────────────────
+  {
+    path: "/admin",
+    element: <AdminGuard />,
+    children: [
+      { index: true, element: <Wrap><AdminDashboard /></Wrap> },
+      { path: "staff", element: <Wrap><AdminStaff /></Wrap> },
+      { path: "risks", element: <Wrap><AdminRisks /></Wrap> },
+      { path: "risks/new", element: <Wrap><AdminAddRisk /></Wrap> },
+      { path: "risks/:id/edit", element: <Wrap><AdminAddRisk /></Wrap> },
+      { path: "departments", element: <Wrap><AdminDepts /></Wrap> },
+      { path: "audit", element: <Wrap><AdminAudit /></Wrap> },
+    ],
+  },
+
+  // ── Staff portal ────────────────────────────────────────────────────────────
+  {
+    path: "/staff",
+    element: <StaffGuard />,
+    children: [
+      { index: true, element: <Wrap><StaffDashboard /></Wrap> },
+      { path: "risks", element: <Wrap><StaffRisks /></Wrap> },
+      { path: "risks/new", element: <Wrap><StaffAddRisk /></Wrap> },
+      { path: "risks/:id/edit", element: <Wrap><StaffAddRisk /></Wrap> },
+      { path: "kanban", element: <Wrap><StaffKanban /></Wrap> },
+    ],
+  },
+
+  // Catch-all
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
 

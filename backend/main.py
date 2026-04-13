@@ -26,6 +26,12 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # service-role client — bypasses RLS; all app-level access control is here
 supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
+# Token → AuthUser cache to avoid a Supabase network call on every request.
+# Entries expire after TOKEN_CACHE_TTL seconds. This prevents flaky outbound
+# connections from returning spurious 401s and logging the user out.
+TOKEN_CACHE_TTL = 60  # seconds
+_token_cache: dict[str, tuple[object, float]] = {}  # token → (AuthUser, expires_at)
+
 app = FastAPI(title="ERIMP API — Enterprise Risk Intelligence & Mitigation Platform")
 
 app.add_middleware(
@@ -56,7 +62,18 @@ class AuthUser:
 
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> AuthUser:
+    import time
     token = credentials.credentials
+
+    # Return cached result if still valid
+    cached = _token_cache.get(token)
+    if cached:
+        auth_user, expires_at = cached
+        if time.time() < expires_at:
+            return auth_user
+        else:
+            del _token_cache[token]
+
     try:
         res = supabase.auth.get_user(token)
         if not res or not res.user:
@@ -69,7 +86,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
             raise ValueError("No profile")
         p = profile_res.data[0]
         dept = p.get("departments") or {}
-        return AuthUser(
+        auth_user = AuthUser(
             id=user_id,
             email=res.user.email,
             role=p.get("role", "department_user"),
@@ -78,13 +95,23 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
             department_code=dept.get("code"),
             department_name=dept.get("name"),
         )
+        _token_cache[token] = (auth_user, time.time() + TOKEN_CACHE_TTL)
+        return auth_user
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
 def require_admin(user: AuthUser = Depends(verify_token)) -> AuthUser:
-    if user.role != "admin":
+    if user.role not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
+def require_super_admin(user: AuthUser = Depends(verify_token)) -> AuthUser:
+    if user.role != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
     return user
 
 
@@ -285,9 +312,32 @@ class UserCreate(BaseModel):
     @field_validator("role")
     @classmethod
     def validate_role(cls, v):
-        if v not in {"admin", "department_user"}:
-            raise ValueError("Role must be admin or department_user")
+        if v not in {"super_admin", "admin", "department_user"}:
+            raise ValueError("Role must be super_admin, admin, or department_user")
         return v
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    department_id: Optional[str] = None
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v):
+        if v is not None and v not in {"super_admin", "admin", "department_user"}:
+            raise ValueError("Role must be super_admin, admin, or department_user")
+        return v
+
+
+class DepartmentCreate(BaseModel):
+    name: str
+    code: str
+
+
+class DepartmentUpdate(BaseModel):
+    name: Optional[str] = None
+    code: Optional[str] = None
 
 
 class SuggestTagsRequest(BaseModel):
@@ -409,16 +459,69 @@ def list_departments(user: AuthUser = Depends(verify_token)):
     return result
 
 
+@app.post("/departments")
+def create_department(data: DepartmentCreate, user: AuthUser = Depends(require_super_admin)):
+    try:
+        result = supabase_admin.table("departments").insert({
+            "name": data.name.strip(),
+            "code": data.code.strip().upper(),
+        }).execute()
+        if not result.data:
+            raise HTTPException(500, "Failed to create department")
+        log_audit(user, "CREATE_DEPARTMENT", "departments", result.data[0]["id"],
+                  new_value={"name": data.name, "code": data.code})
+        return result.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, f"Failed to create department: {str(e)}")
+
+
+@app.put("/departments/{dept_id}")
+def update_department(dept_id: str, data: DepartmentUpdate, user: AuthUser = Depends(require_super_admin)):
+    updates = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None}
+    if "code" in updates:
+        updates["code"] = updates["code"].strip().upper()
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+    try:
+        result = supabase_admin.table("departments").update(updates).eq("id", dept_id).execute()
+        if not result.data:
+            raise HTTPException(404, "Department not found")
+        log_audit(user, "UPDATE_DEPARTMENT", "departments", dept_id, new_value=updates)
+        return result.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, f"Failed to update department: {str(e)}")
+
+
+@app.delete("/departments/{dept_id}")
+def delete_department(dept_id: str, user: AuthUser = Depends(require_super_admin)):
+    # Check no active risks
+    risks = supabase_admin.table("risks").select("id").eq("department_id", dept_id).limit(1).execute()
+    if risks.data:
+        raise HTTPException(400, "Cannot delete department with existing risks. Remove all risks first.")
+    try:
+        supabase_admin.table("departments").delete().eq("id", dept_id).execute()
+        log_audit(user, "DELETE_DEPARTMENT", "departments", dept_id)
+        return {"deleted": True}
+    except Exception as e:
+        raise HTTPException(400, f"Failed to delete department: {str(e)}")
+
+
 # ---------------------------------------------------------------------------
 # Users
 # ---------------------------------------------------------------------------
 
 @app.get("/users")
 def list_users(user: AuthUser = Depends(require_admin)):
-    profiles = supabase_admin.table("profiles").select(
-        "*, departments(name, code)"
-    ).order("created_at", desc=True).execute()
-    return profiles.data or []
+    q = supabase_admin.table("profiles").select("*, departments(name, code)")
+    # Admins only see department_user accounts; super_admin sees everyone
+    if user.role == "admin":
+        q = q.eq("role", "department_user")
+    result = q.order("created_at", desc=True).execute()
+    return result.data or []
 
 
 @app.post("/users")
@@ -444,6 +547,28 @@ def create_user(data: UserCreate, user: AuthUser = Depends(require_admin)):
         return {"id": new_id, "email": data.email, "full_name": data.full_name, "role": data.role}
     except Exception as e:
         raise HTTPException(400, f"Failed to create user: {str(e)}")
+
+
+@app.put("/users/{user_id}")
+def update_user(user_id: str, data: UserUpdate, user: AuthUser = Depends(require_admin)):
+    if user_id == user.id:
+        raise HTTPException(400, "Cannot edit your own account via this endpoint")
+    # Admins cannot promote to admin/super_admin
+    if user.role == "admin" and data.role in {"admin", "super_admin"}:
+        raise HTTPException(403, "Admins cannot assign admin or super_admin roles")
+    updates = {k: v for k, v in data.model_dump(exclude_unset=True).items()}
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+    try:
+        result = supabase_admin.table("profiles").update(updates).eq("id", user_id).execute()
+        if not result.data:
+            raise HTTPException(404, "User not found")
+        log_audit(user, "UPDATE_USER", "profiles", user_id, new_value=updates)
+        return result.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, f"Failed to update user: {str(e)}")
 
 
 @app.delete("/users/{user_id}")
@@ -675,7 +800,7 @@ def dashboard_summary(
 
 @app.get("/dashboard/by-department")
 def dashboard_by_department(user: AuthUser = Depends(verify_token)):
-    if user.role != "admin":
+    if user.role not in {"admin", "super_admin"}:
         raise HTTPException(403, "Admin only")
     depts = supabase_admin.table("departments").select("id, name, code").order("name").execute().data or []
     result = []
