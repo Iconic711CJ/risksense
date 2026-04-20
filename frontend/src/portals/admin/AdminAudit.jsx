@@ -1,40 +1,54 @@
 import { useEffect, useState } from "react";
-import { ClipboardList, ChevronLeft, ChevronRight, RefreshCw, Calendar } from "lucide-react";
+import { ClipboardList, ChevronLeft, ChevronRight, RefreshCw, Calendar, Building2 } from "lucide-react";
 import { getAuditLog } from "../../services/api";
+import useAppStore from "../../store/useAppStore";
 
-const ACTION_COLORS = {
-  LOGIN:          "bg-slate-100 text-slate-600 border border-slate-200",
-  CREATE_RISK:    "bg-emerald-100 text-emerald-700 border border-emerald-200",
-  UPDATE_RISK:    "bg-blue-100 text-blue-700 border border-blue-200",
-  UPDATE_STATUS:  "bg-violet-100 text-violet-700 border border-violet-200",
-  DELETE_RISK:    "bg-red-100 text-red-700 border border-red-200",
-  CREATE_USER:    "bg-indigo-100 text-indigo-700 border border-indigo-200",
-  UPDATE_USER:    "bg-cyan-100 text-cyan-700 border border-cyan-200",
-  DELETE_USER:    "bg-rose-100 text-rose-700 border border-rose-200",
+// ── palette ───────────────────────────────────────────────────────────────────
+const P = {
+  bg:     "#DEDCDC",
+  card:   "#ffffff",
+  dark:   "#191D23",
+  accent: "#57707A",
+  mid:    "#7E919F",
+  light:  "#979DAB",
+  border: "#C5BAC4",
+};
+
+const ACTION_STYLE = {
+  LOGIN:         { background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1" },
+  CREATE_RISK:   { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" },
+  UPDATE_RISK:   { background: "#dbeafe", color: "#1e40af", border: "1px solid #93c5fd" },
+  UPDATE_STATUS: { background: "#ede9fe", color: "#5b21b6", border: "1px solid #c4b5fd" },
+  DELETE_RISK:   { background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" },
+  CREATE_USER:   { background: "#e0e7ff", color: "#3730a3", border: "1px solid #a5b4fc" },
+  UPDATE_USER:   { background: "#cffafe", color: "#155e75", border: "1px solid #67e8f9" },
+  DELETE_USER:   { background: "#ffe4e6", color: "#9f1239", border: "1px solid #fda4af" },
 };
 
 const ACTION_GROUPS = {
-  "Risk Events": ["CREATE_RISK","UPDATE_RISK","UPDATE_STATUS","DELETE_RISK"],
-  "User Events": ["CREATE_USER","UPDATE_USER","DELETE_USER","LOGIN"],
+  "Risk Events": ["CREATE_RISK", "UPDATE_RISK", "UPDATE_STATUS", "DELETE_RISK"],
+  "User Events": ["CREATE_USER", "UPDATE_USER", "DELETE_USER", "LOGIN"],
 };
 
+const PAGE_SIZE = 25;
+
 export default function AdminAudit() {
-  const [entries,    setEntries]    = useState([]);
-  const [total,      setTotal]      = useState(0);
-  const [page,       setPage]       = useState(1);
-  const [loading,    setLoading]    = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const user = useAppStore((s) => s.user);
+
+  const [entries,      setEntries]      = useState([]);
+  const [total,        setTotal]        = useState(0);
+  const [page,         setPage]         = useState(1);
+  const [loading,      setLoading]      = useState(true);
+  const [refreshing,   setRefreshing]   = useState(false);
   const [actionFilter, setActionFilter] = useState("");
   const [fromDate,     setFromDate]     = useState("");
   const [toDate,       setToDate]       = useState("");
   const [expanded,     setExpanded]     = useState(null);
 
-  const PAGE_SIZE  = 25;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   async function load(silent = false) {
-    if (silent) setRefreshing(true);
-    else setLoading(true);
+    if (silent) setRefreshing(true); else setLoading(true);
     try {
       const params = { page, page_size: PAGE_SIZE };
       if (actionFilter) params.action    = actionFilter;
@@ -51,38 +65,62 @@ export default function AdminAudit() {
 
   useEffect(() => { load(); }, [page, actionFilter, fromDate, toDate]); // eslint-disable-line
 
-  function handleFilterChange(setter) {
+  function resetPage(setter) {
     return (val) => { setter(val); setPage(1); };
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
 
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <ClipboardList className="w-5 h-5 text-[#064E3B]" />
-            <h1 className="text-xl font-black text-slate-900">Audit Trail</h1>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 flex items-center justify-center" style={{ background: P.accent }}>
+            <ClipboardList className="w-4 h-4 text-white" />
           </div>
-          <p className="text-sm text-slate-400">{total.toLocaleString()} events logged</p>
+          <div>
+            <h1 className="text-xl font-black tracking-tight" style={{ color: P.dark }}>Audit Trail</h1>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Building2 className="w-3 h-3" style={{ color: P.light }} />
+              <p className="text-[11px] font-medium" style={{ color: P.mid }}>
+                {user?.department_name} · department activity only
+              </p>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={() => load(true)}
-          disabled={refreshing}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-[#064E3B] hover:border-[#064E3B] transition-all text-xs font-bold shadow-sm disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-semibold" style={{ color: P.light }}>
+            {total.toLocaleString()} events
+          </span>
+          <button
+            onClick={() => load(true)}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50"
+            style={{ background: P.card, border: `1px solid ${P.border}`, color: P.mid }}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Scope notice */}
+      <div className="flex items-center gap-2 px-3 py-2.5"
+        style={{ background: P.accent + "15", border: `1px solid ${P.accent}33` }}>
+        <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: P.accent }} />
+        <p className="text-[11px] font-semibold" style={{ color: P.accent }}>
+          Showing activity from users in <strong>{user?.department_name}</strong> only.
+          Super Admins can view the full platform audit trail.
+        </p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
         <select
-          className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm focus:outline-none focus:border-[#064E3B]"
+          className="px-3 py-2 text-sm focus:outline-none"
+          style={{ background: P.card, border: `1px solid ${P.border}`, color: P.dark }}
           value={actionFilter}
-          onChange={(e) => handleFilterChange(setActionFilter)(e.target.value)}
+          onChange={(e) => resetPage(setActionFilter)(e.target.value)}
         >
           <option value="">All Actions</option>
           {Object.entries(ACTION_GROUPS).map(([group, actions]) => (
@@ -95,26 +133,27 @@ export default function AdminAudit() {
         </select>
 
         <div className="flex items-center gap-2">
-          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          <input
-            type="date"
-            className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm focus:outline-none focus:border-[#064E3B]"
+          <Calendar className="w-3.5 h-3.5" style={{ color: P.light }} />
+          <input type="date"
+            className="px-3 py-2 text-sm focus:outline-none"
+            style={{ background: P.card, border: `1px solid ${P.border}`, color: P.dark }}
             value={fromDate}
-            onChange={(e) => handleFilterChange(setFromDate)(e.target.value)}
+            onChange={(e) => resetPage(setFromDate)(e.target.value)}
           />
-          <span className="text-slate-400 text-xs">to</span>
-          <input
-            type="date"
-            className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm focus:outline-none focus:border-[#064E3B]"
+          <span className="text-xs" style={{ color: P.light }}>to</span>
+          <input type="date"
+            className="px-3 py-2 text-sm focus:outline-none"
+            style={{ background: P.card, border: `1px solid ${P.border}`, color: P.dark }}
             value={toDate}
-            onChange={(e) => handleFilterChange(setToDate)(e.target.value)}
+            onChange={(e) => resetPage(setToDate)(e.target.value)}
           />
         </div>
 
         {(actionFilter || fromDate || toDate) && (
           <button
             onClick={() => { setActionFilter(""); setFromDate(""); setToDate(""); setPage(1); }}
-            className="text-xs text-slate-400 hover:text-slate-700 transition-colors underline"
+            className="text-xs font-semibold underline"
+            style={{ color: P.mid }}
           >
             Clear filters
           </button>
@@ -122,98 +161,113 @@ export default function AdminAudit() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div style={{ background: P.card, border: `1px solid ${P.border}` }} className="overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-7 h-7 rounded-full border-2 border-[#064E3B] border-t-transparent animate-spin" />
+            <div className="w-7 h-7 border-2 border-t-transparent animate-spin"
+              style={{ borderColor: P.accent, borderTopColor: "transparent" }} />
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Timestamp</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">User</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target</th>
-                  <th className="text-left px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Changes</th>
+                <tr style={{ borderBottom: `1px solid ${P.border}`, background: P.bg }}>
+                  {["Timestamp", "User", "Action", "Target", "Changes"].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest"
+                      style={{ color: P.light }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {entries.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-14 text-center">
-                      <ClipboardList className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                      <p className="text-slate-400 text-xs">No audit entries found</p>
+                      <ClipboardList className="w-8 h-8 mx-auto mb-2" style={{ color: P.border }} />
+                      <p className="text-xs" style={{ color: P.mid }}>No audit entries found</p>
                     </td>
                   </tr>
                 ) : entries.map((e) => {
-                  const isExpanded = expanded === e.id;
+                  const isExp = expanded === e.id;
                   const hasChanges = e.old_value || e.new_value;
+                  const actionStyle = ACTION_STYLE[e.action] ?? { background: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0" };
                   return (
                     <>
-                      <tr
-                        key={e.id}
-                        onClick={() => hasChanges && setExpanded(isExpanded ? null : e.id)}
-                        className={`border-b border-slate-50 transition-colors
-                          ${hasChanges ? "cursor-pointer hover:bg-slate-50" : "hover:bg-slate-50/50"}`}
+                      <tr key={e.id}
+                        onClick={() => hasChanges && setExpanded(isExp ? null : e.id)}
+                        className="transition-colors border-b"
+                        style={{
+                          borderColor: P.border,
+                          cursor: hasChanges ? "pointer" : "default",
+                          background: isExp ? P.accent + "08" : "transparent",
+                        }}
+                        onMouseEnter={(ev) => { ev.currentTarget.style.background = P.accent + "08"; }}
+                        onMouseLeave={(ev) => { ev.currentTarget.style.background = isExp ? P.accent + "08" : "transparent"; }}
                       >
-                        <td className="px-5 py-3 whitespace-nowrap">
-                          <p className="text-slate-600 text-xs font-mono">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <p className="font-mono text-xs" style={{ color: P.dark }}>
                             {new Date(e.created_at).toLocaleDateString()}
                           </p>
-                          <p className="text-slate-400 text-[10px] font-mono">
+                          <p className="font-mono text-[10px]" style={{ color: P.light }}>
                             {new Date(e.created_at).toLocaleTimeString()}
                           </p>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-                              <span className="text-[9px] font-black text-[#064E3B]">
+                            <div className="w-6 h-6 flex items-center justify-center shrink-0"
+                              style={{ background: P.accent + "22" }}>
+                              <span className="text-[9px] font-black" style={{ color: P.accent }}>
                                 {(e.user_name || "?").charAt(0).toUpperCase()}
                               </span>
                             </div>
-                            <span className="text-slate-700 text-xs font-medium whitespace-nowrap">{e.user_name}</span>
+                            <span className="text-xs font-medium whitespace-nowrap" style={{ color: P.dark }}>
+                              {e.user_name}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold ${ACTION_COLORS[e.action] ?? "bg-slate-100 text-slate-500 border border-slate-200"}`}>
+                          <span className="inline-flex px-2 py-0.5 text-[10px] font-bold" style={actionStyle}>
                             {e.action.replace(/_/g, " ")}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-slate-500 font-mono text-[10px]">{e.table_name}</p>
+                          <p className="font-mono text-[10px]" style={{ color: P.mid }}>{e.table_name}</p>
                           {e.record_id && (
-                            <p className="text-slate-300 font-mono text-[9px] truncate max-w-[100px]">{e.record_id}</p>
+                            <p className="font-mono text-[9px] truncate max-w-[100px]" style={{ color: P.border }}>
+                              {e.record_id}
+                            </p>
                           )}
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">
                           {hasChanges ? (
-                            <span className="text-[10px] text-[#064E3B] font-medium">
-                              {isExpanded ? "▲ Hide" : "▼ Show"}
+                            <span className="text-[10px] font-bold" style={{ color: P.accent }}>
+                              {isExp ? "▲ Hide" : "▼ Show"}
                             </span>
                           ) : (
-                            <span className="text-[10px] text-slate-300">—</span>
+                            <span className="text-[10px]" style={{ color: P.border }}>—</span>
                           )}
                         </td>
                       </tr>
 
-                      {isExpanded && (
-                        <tr key={`${e.id}-exp`} className="bg-emerald-50/30 border-b border-slate-100">
-                          <td colSpan={5} className="px-5 py-4">
+                      {isExp && (
+                        <tr key={`${e.id}-exp`} style={{ background: P.accent + "08", borderBottom: `1px solid ${P.border}` }}>
+                          <td colSpan={5} className="px-4 py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {e.old_value && (
                                 <div>
-                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Before</p>
-                                  <pre className="text-[11px] text-slate-600 bg-white rounded-xl p-3 overflow-auto max-h-40 font-mono leading-relaxed border border-slate-200">
+                                  <p className="text-[10px] font-black uppercase tracking-widest mb-2"
+                                    style={{ color: P.light }}>Before</p>
+                                  <pre className="text-[11px] p-3 overflow-auto max-h-40 font-mono leading-relaxed"
+                                    style={{ background: P.bg, border: `1px solid ${P.border}`, color: P.mid }}>
                                     {JSON.stringify(e.old_value, null, 2)}
                                   </pre>
                                 </div>
                               )}
                               {e.new_value && (
                                 <div>
-                                  <p className="text-[10px] font-bold text-[#064E3B] uppercase tracking-wider mb-2">After</p>
-                                  <pre className="text-[11px] text-emerald-700 bg-emerald-50 rounded-xl p-3 overflow-auto max-h-40 font-mono leading-relaxed border border-emerald-100">
+                                  <p className="text-[10px] font-black uppercase tracking-widest mb-2"
+                                    style={{ color: P.accent }}>After</p>
+                                  <pre className="text-[11px] p-3 overflow-auto max-h-40 font-mono leading-relaxed"
+                                    style={{ background: P.accent + "10", border: `1px solid ${P.accent}33`, color: P.accent }}>
                                     {JSON.stringify(e.new_value, null, 2)}
                                   </pre>
                                 </div>
@@ -233,30 +287,26 @@ export default function AdminAudit() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs" style={{ color: P.light }}>
           {entries.length === 0 ? "No results" : (
             <>Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, total)} of {total.toLocaleString()}</>
           )}
         </p>
         {totalPages > 1 && (
           <div className="flex items-center gap-2">
-            <button onClick={() => setPage(1)} disabled={page === 1}
-              className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-[#064E3B] disabled:opacity-30 transition-colors text-xs font-bold shadow-sm">
-              First
-            </button>
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-[#064E3B] disabled:opacity-30 transition-colors shadow-sm">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-xs text-slate-400 px-2 font-mono">{page} / {totalPages}</span>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-[#064E3B] disabled:opacity-30 transition-colors shadow-sm">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <button onClick={() => setPage(totalPages)} disabled={page === totalPages}
-              className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-[#064E3B] disabled:opacity-30 transition-colors text-xs font-bold shadow-sm">
-              Last
-            </button>
+            {[
+              { label: "First", action: () => setPage(1), disabled: page === 1 },
+              { label: <ChevronLeft className="w-4 h-4" />, action: () => setPage((p) => p - 1), disabled: page === 1 },
+              { label: <ChevronRight className="w-4 h-4" />, action: () => setPage((p) => p + 1), disabled: page === totalPages },
+              { label: "Last", action: () => setPage(totalPages), disabled: page === totalPages },
+            ].map((btn, i) => (
+              <button key={i} onClick={btn.action} disabled={btn.disabled}
+                className="px-2.5 py-1.5 text-xs font-bold transition-colors disabled:opacity-30"
+                style={{ background: P.card, border: `1px solid ${P.border}`, color: P.mid }}>
+                {btn.label}
+              </button>
+            ))}
+            <span className="text-xs font-mono px-2" style={{ color: P.light }}>{page} / {totalPages}</span>
           </div>
         )}
       </div>

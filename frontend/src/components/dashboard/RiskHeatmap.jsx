@@ -1,37 +1,29 @@
-import { cn } from "../../lib/utils";
+const LIKELIHOOD_LABELS = ["Rare", "Unlikely", "Possible", "Likely", "Certain"];
+const IMPACT_LABELS     = ["Negligible", "Minor", "Moderate", "Major", "Critical"];
 
-const LIKELIHOOD = ["Rare", "Unlikely", "Possible", "Likely", "Certain"];
-const IMPACT = ["Negl.", "Minor", "Moderate", "High", "Critical"];
-
-function getCellStyle(score, count) {
-  const hasRisks = count > 0;
-  if (score <= 4)
-    return {
-      bg: hasRisks ? "bg-emerald-500 border-emerald-600" : "bg-emerald-50 border-emerald-100 opacity-40",
-      text: hasRisks ? "text-white" : "text-emerald-300",
-    };
-  if (score <= 9)
-    return {
-      bg: hasRisks ? "bg-yellow-400 border-yellow-500" : "bg-yellow-50 border-yellow-100 opacity-40",
-      text: hasRisks ? "text-yellow-900 font-black" : "text-yellow-300",
-    };
-  if (score <= 16)
-    return {
-      bg: hasRisks ? "bg-orange-500 border-orange-600" : "bg-orange-50 border-orange-100 opacity-40",
-      text: hasRisks ? "text-white" : "text-orange-300",
-    };
-  return {
-    bg: hasRisks ? "bg-red-600 border-red-700" : "bg-red-50 border-red-100 opacity-40",
-    text: hasRisks ? "text-white" : "text-red-300",
-  };
+function scoreToColor(score) {
+  const stops = [
+    { s: 1,  rgb: [22,  163, 74]  },
+    { s: 6,  rgb: [132, 204, 22]  },
+    { s: 9,  rgb: [202, 138, 4]   },
+    { s: 16, rgb: [234, 88,  12]  },
+    { s: 25, rgb: [220, 38,  38]  },
+  ];
+  let lo = stops[0], hi = stops[stops.length - 1];
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (score >= stops[i].s && score <= stops[i + 1].s) { lo = stops[i]; hi = stops[i + 1]; break; }
+  }
+  const t = hi.s === lo.s ? 0 : (score - lo.s) / (hi.s - lo.s);
+  const r = Math.round(lo.rgb[0] + t * (hi.rgb[0] - lo.rgb[0]));
+  const g = Math.round(lo.rgb[1] + t * (hi.rgb[1] - lo.rgb[1]));
+  const b = Math.round(lo.rgb[2] + t * (hi.rgb[2] - lo.rgb[2]));
+  return { bg: `rgb(${r},${g},${b})`, shadow: `rgba(${r},${g},${b},0.5)` };
 }
 
 export default function RiskHeatmap({ cells = [], loading }) {
-  // Build a lookup: "l-i" → count
   const countMap = {};
-  (cells || []).forEach((c) => {
-    countMap[`${c.likelihood}-${c.impact}`] = c.count || 0;
-  });
+  (cells || []).forEach((c) => { countMap[`${c.likelihood}-${c.impact}`] = c.count || 0; });
+  const maxCount = Math.max(1, ...Object.values(countMap));
 
   if (loading) {
     return (
@@ -42,42 +34,58 @@ export default function RiskHeatmap({ cells = [], loading }) {
   }
 
   return (
-    <div className="select-none flex flex-col gap-3">
-      <div className="flex gap-1">
+    <div className="select-none w-full">
+      <div className="flex gap-2">
         {/* Y-axis label */}
-        <div className="flex items-center justify-center w-5">
-          <p className="text-[9px] text-muted-foreground -rotate-90 whitespace-nowrap uppercase tracking-widest">
+        <div className="flex items-center justify-center w-4 shrink-0">
+          <p className="text-[9px] text-slate-500 -rotate-90 whitespace-nowrap uppercase tracking-widest">
             Likelihood
           </p>
         </div>
 
-        <div className="flex-1 min-w-0">
+        {/* Y-axis ticks */}
+        <div className="flex flex-col justify-around shrink-0" style={{ height: 220 }}>
           {[5, 4, 3, 2, 1].map((l) => (
-            <div key={l} className="flex gap-0.5 items-center mb-0.5">
-              <span className="w-12 text-right text-[9px] text-muted-foreground pr-1 shrink-0">
-                {LIKELIHOOD[l - 1]}
-              </span>
+            <span key={l} className="text-[9px] text-slate-500 text-right leading-none w-12 pr-1">
+              {LIKELIHOOD_LABELS[l - 1]}
+            </span>
+          ))}
+        </div>
+
+        {/* Grid */}
+        <div className="flex-1 flex flex-col gap-1" style={{ height: 220 }}>
+          {[5, 4, 3, 2, 1].map((l) => (
+            <div key={l} className="flex gap-1 flex-1">
               {[1, 2, 3, 4, 5].map((i) => {
                 const score = l * i;
                 const count = countMap[`${l}-${i}`] || 0;
-                const style = getCellStyle(score, count);
+                const { bg, shadow } = scoreToColor(score);
+                const opacity = count > 0 ? 0.2 + 0.8 * (count / maxCount) : 0.12;
                 return (
                   <div
                     key={i}
-                    className={cn(
-                      "flex-1 h-8 rounded border flex items-center justify-center",
-                      "transition-all duration-150 cursor-default relative group",
-                      style.bg
-                    )}
-                    title={`L${l}×I${i} = ${score} | ${count} risk${count !== 1 ? "s" : ""}`}
+                    className="flex-1 rounded-lg flex flex-col items-center justify-center cursor-default relative group transition-transform hover:scale-105"
+                    style={{
+                      background: bg,
+                      opacity,
+                      boxShadow: count > 0 ? `0 2px 8px ${shadow}` : "none",
+                    }}
+                    title={`L${l} × I${i} = ${score} | ${count} risk${count !== 1 ? "s" : ""}`}
                   >
-                    <span className={cn("text-[10px] font-bold", style.text)}>
-                      {count > 0 ? count : ""}
-                    </span>
                     {count > 0 && (
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-card border border-border rounded-lg px-2 py-1 shadow-xl z-10 whitespace-nowrap">
-                        <p className="text-[10px] text-foreground font-semibold">{count} risk{count !== 1 ? "s" : ""}</p>
-                        <p className="text-[9px] text-muted-foreground">Score: {score}</p>
+                      <span className="text-white font-black text-sm leading-none drop-shadow">
+                        {count}
+                      </span>
+                    )}
+                    <span className="text-white/60 text-[8px] font-bold leading-none mt-0.5">{score}</span>
+
+                    {/* Tooltip */}
+                    {count > 0 && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-20 pointer-events-none">
+                        <div className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 shadow-xl whitespace-nowrap">
+                          <p className="text-[10px] text-white font-bold">{count} risk{count !== 1 ? "s" : ""}</p>
+                          <p className="text-[9px] text-slate-400">L{l} × I{i} = {score}</p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -85,30 +93,30 @@ export default function RiskHeatmap({ cells = [], loading }) {
               })}
             </div>
           ))}
-
-          {/* X-axis labels */}
-          <div className="flex gap-0.5 mt-1 ml-[3.25rem]">
-            {IMPACT.map((label, i) => (
-              <div key={i} className="flex-1 text-center text-[9px] text-muted-foreground">{label}</div>
-            ))}
-          </div>
-          <p className="text-center text-[9px] text-muted-foreground mt-0.5 uppercase tracking-widest">Impact</p>
         </div>
       </div>
 
+      {/* X-axis */}
+      <div className="flex gap-2 mt-1.5">
+        <div className="w-4 shrink-0" />
+        <div className="w-12 shrink-0" />
+        <div className="flex-1 flex gap-1">
+          {IMPACT_LABELS.map((label) => (
+            <div key={label} className="flex-1 text-center text-[9px] text-slate-500 truncate">{label}</div>
+          ))}
+        </div>
+      </div>
+      <div className="text-center text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">Impact →</div>
+
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 justify-center mt-2 border-t border-slate-50 pt-3">
-        {[
-          { label: "Low", color: "bg-emerald-500 border-emerald-600" },
-          { label: "Tolerable", color: "bg-yellow-400 border-yellow-500" },
-          { label: "High", color: "bg-orange-500 border-orange-600" },
-          { label: "Critical", color: "bg-red-600 border-red-700" },
-        ].map((l) => (
-          <div key={l.label} className="flex items-center gap-2">
-            <span className={cn("w-3 h-3 rounded-full border shadow-sm", l.color)} />
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{l.label}</span>
-          </div>
-        ))}
+      <div className="flex items-center gap-3 justify-center mt-3 pt-3 border-t border-slate-800">
+        <div className="flex items-center gap-1.5 h-3 w-32 rounded-full overflow-hidden"
+          style={{ background: "linear-gradient(to right, #16a34a, #84cc16, #ca8a04, #ea580c, #dc2626)" }}
+        />
+        <div className="flex items-center justify-between w-32 text-[9px] text-slate-500">
+          <span>Low</span>
+          <span>Critical</span>
+        </div>
       </div>
     </div>
   );

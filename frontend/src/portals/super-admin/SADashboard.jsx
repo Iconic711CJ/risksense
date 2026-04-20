@@ -12,17 +12,11 @@ import {
   LineChart, Line, CartesianGrid,
   PieChart, Pie, Cell
 } from "recharts";
+import RiskHeatmap from "../../components/dashboard/RiskHeatmap";
 
 // ── colour tokens ─────────────────────────────────────────────────────────────
 const RATING_COLOR = { Critical: "#ef4444", High: "#f97316", Tolerable: "#eab308", Low: "#22c55e" };
 const CAT_COLORS   = ["#6366f1","#f97316","#22c55e","#eab308","#ec4899","#14b8a6","#8b5cf6","#64748b"];
-
-const HEATMAP_BG = (count) => {
-  if (count === 0) return "bg-slate-800 text-slate-600";
-  if (count <= 2)  return "bg-indigo-900/60 text-indigo-300";
-  if (count <= 5)  return "bg-orange-900/60 text-orange-300";
-  return "bg-rose-900/80 text-rose-300 font-black";
-};
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, sub, accent, delta }) {
@@ -117,12 +111,6 @@ export default function SADashboard() {
   }));
 
   const trendData = trend.map((t) => ({ date: t.date?.slice(5), count: t.count }));
-
-  // Heatmap: flatten {likelihood, impact, count}[]
-  const heatCells = {};
-  (heatmap?.cells ?? heatmap ?? []).forEach((c) => {
-    heatCells[`${c.likelihood}-${c.impact}`] = c.count ?? 0;
-  });
 
   if (loading) {
     return (
@@ -265,31 +253,7 @@ export default function SADashboard() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
           <h2 className="text-sm font-bold text-white mb-1">Risk Heatmap</h2>
           <p className="text-[10px] text-slate-600 mb-4">Likelihood × Impact</p>
-          <div className="space-y-1.5">
-            {[5, 4, 3, 2, 1].map((likelihood) => (
-              <div key={likelihood} className="flex items-center gap-1.5">
-                <span className="text-[9px] text-slate-600 w-3 text-right flex-shrink-0">{likelihood}</span>
-                {[1, 2, 3, 4, 5].map((impact) => {
-                  const count = heatCells[`${likelihood}-${impact}`] ?? 0;
-                  return (
-                    <div
-                      key={impact}
-                      title={`L${likelihood} × I${impact}: ${count} risks`}
-                      className={`flex-1 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors ${HEATMAP_BG(count)}`}
-                    >
-                      {count > 0 ? count : ""}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-            <div className="flex items-center gap-1.5 mt-2 pl-5">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex-1 text-center text-[9px] text-slate-600">{i}</div>
-              ))}
-            </div>
-            <p className="text-[9px] text-slate-700 pl-5 text-center">Impact →</p>
-          </div>
+          <RiskHeatmap cells={heatmap} />
         </div>
 
         {/* Status breakdown */}

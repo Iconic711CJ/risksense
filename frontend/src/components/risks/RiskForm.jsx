@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Loader2, Tag, X, Sparkles } from "lucide-react";
-import { cn, scoreToRating, getRiskClass } from "../../lib/utils";
+import { cn, scoreToRating } from "../../lib/utils";
 import { suggestTags } from "../../services/api";
 import useAppStore from "../../store/useAppStore";
 
@@ -25,40 +25,39 @@ const IMPACT_OPTS = [
   { value: 5, label: "Critical", sub: "Catastrophic" },
 ];
 
-const RATING_STYLES = {
-  Low: "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
-  Tolerable: "border-yellow-500/40 bg-yellow-500/10 text-yellow-400",
-  High: "border-orange-500/40 bg-orange-500/10 text-orange-400",
-  Critical: "border-red-500/40 bg-red-500/10 text-red-400",
-};
+function mixHex(h1, h2) {
+  const p = (h) => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+  const [r1,g1,b1] = p(h1), [r2,g2,b2] = p(h2);
+  return `#${[Math.round((r1+r2)/2),Math.round((g1+g2)/2),Math.round((b1+b2)/2)].map(v=>v.toString(16).padStart(2,'0')).join('')}`;
+}
+
+const RATING_GRADIENT = { 1: "#16a34a", 2: "#84cc16", 3: "#ca8a04", 4: "#ea580c", 5: "#dc2626" };
 
 function RatingSelector({ options, value, onChange, label }) {
   return (
     <div className="space-y-2">
       <label className="text-sm font-semibold text-foreground/80">{label}</label>
       <div className="grid grid-cols-5 gap-1.5">
-        {options.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={cn(
-              "flex flex-col items-center gap-0.5 px-1 py-2 rounded-xl border text-center transition-all",
-              "hover:border-primary/50 hover:bg-primary/5",
-              value === opt.value
-                ? "border-primary bg-primary/10 text-primary shadow-md shadow-primary/10"
-                : "border-border text-muted-foreground"
-            )}
-          >
-            <span className={cn(
-              "text-base font-black",
-              value === opt.value ? "text-primary" : "text-foreground/60"
-            )}>
-              {opt.value}
-            </span>
-            <span className="text-[9px] font-semibold leading-tight">{opt.label}</span>
-          </button>
-        ))}
+        {options.map((opt) => {
+          const color = RATING_GRADIENT[opt.value];
+          const selected = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className="flex flex-col items-center gap-0.5 px-1 py-2 rounded-xl border text-center transition-all"
+              style={{
+                background: selected ? color : `${color}22`,
+                borderColor: color,
+                boxShadow: selected ? `0 2px 8px ${color}80` : "none",
+              }}
+            >
+              <span className="text-base font-black" style={{ color: selected ? "#fff" : color }}>{opt.value}</span>
+              <span className="text-[9px] font-semibold leading-tight" style={{ color: selected ? "#ffffffcc" : color }}>{opt.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -232,21 +231,24 @@ export default function RiskForm({ initial = null, departments = [], onSubmit, l
       </div>
 
       {/* Live risk score display */}
-      {score !== null && (
-        <div className={cn(
-          "flex items-center justify-between px-5 py-4 rounded-2xl border",
-          RATING_STYLES[rating]
-        )}>
+      {score !== null && (() => {
+        const bg = mixHex(RATING_GRADIENT[likelihood], RATING_GRADIENT[impact]);
+        return (
+        <div
+          className="flex items-center justify-between px-5 py-4 rounded-2xl"
+          style={{ background: bg, boxShadow: `0 4px 20px ${bg}66` }}
+        >
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest opacity-70">Live Risk Score</p>
-            <p className="text-3xl font-display font-black mt-1">{score}</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/70">Live Risk Score</p>
+            <p className="text-4xl font-display font-black mt-1 text-white">{score}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs font-bold uppercase tracking-widest opacity-70">Rating</p>
-            <p className="text-2xl font-display font-black mt-1">{rating}</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/70">Rating</p>
+            <p className="text-3xl font-display font-black mt-1 text-white">{rating}</p>
           </div>
         </div>
-      )}
+        );
+      })()}
       {(likelihood === null || impact === null) && (
         <div className="text-center py-2 text-xs text-muted-foreground">
           Select both Likelihood and Impact to see your risk score

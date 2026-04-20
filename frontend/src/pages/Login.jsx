@@ -1,15 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Eye, EyeOff, ShieldCheck, Loader2, Building2 } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Loader2 } from "lucide-react";
 import { login } from "../services/api";
 import useAppStore from "../store/useAppStore";
-import { cn } from "../lib/utils";
 
 export default function Login() {
   const navigate = useNavigate();
   const setAuth = useAppStore((s) => s.setAuth);
-  const isAuthenticated = useAppStore((s) => s.isAuthenticated);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,73 +20,114 @@ export default function Login() {
     return "/staff";
   }
 
-  // Already authenticated — redirect
-  if (isAuthenticated) {
-    const user = useAppStore.getState().user;
-    navigate(portalPath(user?.role), { replace: true });
-    return null;
-  }
-
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please enter your email and password");
-      return;
-    }
+    if (!email || !password) { toast.error("Enter your email and password"); return; }
     setLoading(true);
     try {
       const data = await login(email, password);
       setAuth(data.user, data.access_token);
-      toast.success(`Welcome back, ${data.user.full_name}!`);
+      toast.success(`Welcome, ${data.user.full_name}`);
       navigate(portalPath(data.user.role), { replace: true });
     } catch (err) {
-      const msg = err.response?.data?.detail || "Invalid email or password";
-      toast.error(msg);
+      toast.error(err.response?.data?.detail || "Invalid credentials");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Subtle geometric pattern */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#064E3B_1px,transparent_1.5px)] [background-size:32px_32px]" />
-      </div>
+    <div className="min-h-screen flex" style={{ background: "#191D23" }}>
 
-      <div className="w-full max-w-sm relative z-10 animate-fade-in">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-primary mb-6 shadow-lg rotate-3">
-            <ShieldCheck className="w-10 h-10 text-white -rotate-3" />
+      {/* ── Left panel — branding ────────────────────────────────────────── */}
+      <div className="hidden lg:flex flex-col justify-between w-[420px] p-12 shrink-0" style={{ background: "#191D23", borderRight: "1px solid #2a333d" }}>
+        {/* Logo */}
+        <div>
+          <div className="flex items-center gap-3 mb-12">
+            <div className="w-9 h-9 flex items-center justify-center" style={{ background: "#57707A" }}>
+              <ShieldCheck className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-black text-lg tracking-widest uppercase" style={{ color: "#DEDCDC" }}>ERIMP</span>
           </div>
-          <h1 className="text-4xl font-display font-black text-slate-900 tracking-tight">ERIMP</h1>
-          <p className="text-xs font-bold text-primary uppercase tracking-widest mt-2 px-4">
-            Enterprise Risk Intelligence & Mitigation
+
+          <h1 className="text-4xl font-black leading-tight tracking-tight mb-4" style={{ color: "#DEDCDC" }}>
+            Enterprise Risk<br />Intelligence &<br />Mitigation Platform
+          </h1>
+          <p className="text-sm leading-relaxed" style={{ color: "#7E919F" }}>
+            Centralised risk management for Zambia. Monitor, assess, and mitigate risks across all departments.
           </p>
         </div>
 
-        <div className="minimal-card p-10 bg-white">
-          <div className="mb-8">
-            <h2 className="text-2xl font-display font-black text-slate-900 tracking-tight">Portal Access</h2>
-            <p className="text-xs font-medium text-slate-400 mt-2 uppercase tracking-wide">Enter your credentials below</p>
+        {/* Features list */}
+        <div className="space-y-3">
+          {[
+            "Real-time risk monitoring",
+            "Department-level analytics",
+            "Audit trail & compliance",
+            "Multi-role access control",
+          ].map((f) => (
+            <div key={f} className="flex items-center gap-3">
+              <div className="w-1 h-4" style={{ background: "#57707A" }} />
+              <span className="text-xs font-medium" style={{ color: "#979DAB" }}>{f}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "#2a333d" }}>
+          Charles-Jeff Technologies
+        </p>
+      </div>
+
+      {/* ── Right panel — form ───────────────────────────────────────────── */}
+      {/* Drop your image at /public/login-bg.jpg to replace the gradient */}
+      <div
+        className="flex-1 flex items-center justify-center p-8 relative"
+        style={{
+          backgroundImage: "url('/login-bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/70" />
+
+        <div className="w-full max-w-sm relative z-10">
+
+          {/* Mobile logo */}
+          <div className="flex items-center gap-3 mb-10 lg:hidden">
+            <div className="w-8 h-8 flex items-center justify-center" style={{ background: "#57707A" }}>
+              <ShieldCheck className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-black tracking-widest uppercase" style={{ color: "#DEDCDC" }}>ERIMP</span>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address</label>
+          <div className="mb-8">
+            <h2 className="text-2xl font-black tracking-tight" style={{ color: "#DEDCDC" }}>Login</h2>
+            <p className="text-sm mt-1" style={{ color: "#7E919F" }}>Sign in with your credentials</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "#979DAB" }}>
+                Email Address
+              </label>
               <input
                 type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="staff@nipa.ac.zm"
+                placeholder="you@nipa.ac.zm"
                 disabled={loading}
-                className="w-full px-4 py-3.5 rounded-xl bg-slate-50 border border-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-300"
+                className="w-full px-4 py-3 bg-black/40 border border-white/10 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors backdrop-blur-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
+            {/* Password */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "#979DAB" }}>
+                Password
+              </label>
               <div className="relative">
                 <input
                   type={showPw ? "text" : "password"}
@@ -97,47 +136,38 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   disabled={loading}
-                  className="w-full px-4 py-3.5 pr-12 rounded-xl bg-slate-50 border border-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-300"
+                  className="w-full px-4 py-3 pr-12 bg-[#0d0f14] border border-[#1e2330] text-white text-sm placeholder:text-slate-700 focus:outline-none focus:border-emerald-500 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw((p) => !p)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-300 transition-colors"
                 >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 px-6 rounded-xl font-black text-sm text-white bg-primary shadow-sm hover:opacity-95 transition-all flex items-center justify-center gap-3 active:scale-[0.99]"
+              className="w-full py-3.5 text-sm font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+              style={{ background: "#57707A", color: "#DEDCDC" }}
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white/50" />
-                  AUTHENTICATING...
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Logging in...
                 </>
-              ) : (
-                "SECURED SIGN IN"
-              )}
+              ) : "Login"}
             </button>
           </form>
 
-          <div className="mt-10 pt-8 border-t border-slate-50">
-            <div className="flex items-center gap-3 text-slate-400 group cursor-default">
-              <Building2 className="w-5 h-5 group-hover:text-primary transition-colors" />
-              <p className="text-[10px] font-bold leading-tight uppercase tracking-tight">
-                National Institute of <br/> Public Administration
-              </p>
-            </div>
-          </div>
+          <p className="text-center text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold mt-10">
+            ERIMP · {new Date().getFullYear()}
+          </p>
         </div>
-
-        <p className="text-center text-[10px] font-black text-primary/40 mt-10 uppercase tracking-[0.2em] select-none">
-          ERIMP Platform · {new Date().getFullYear()}
-        </p>
       </div>
     </div>
   );

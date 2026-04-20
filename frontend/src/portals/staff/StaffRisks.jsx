@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, Trash2, Edit2, Search, Loader2 } from "lucide-react";
+import { ShieldAlert, Plus, Trash2, Edit2, Eye, Search, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { getRisks, deleteRisk } from "../../services/api";
@@ -161,6 +161,11 @@ export default function StaffRisks() {
                     </td>
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" asChild>
+                          <Link to={`/staff/risks/${r.id}`}>
+                            <Eye className="w-3.5 h-3.5" />
+                          </Link>
+                        </Button>
                         <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-400 hover:text-[#064E3B] hover:bg-emerald-50" asChild>
                           <Link to={`/staff/risks/${r.id}/edit`}>
                             <Edit2 className="w-3.5 h-3.5" />

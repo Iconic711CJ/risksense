@@ -1,111 +1,74 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Loader2, ChevronDown, CheckCircle2, PlayCircle, RotateCcw, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { updateRiskStatus } from "../../services/api";
 
-// ── Status appearance ─────────────────────────────────────────────────────────
 const STATUS_STYLE = {
-  "Identified":      "bg-slate-100 text-slate-600 border border-slate-300 hover:border-slate-400",
-  "Under Mitigation":"bg-blue-100 text-blue-700 border border-blue-200 hover:border-blue-400",
-  "Resolved":        "bg-emerald-100 text-emerald-700 border border-emerald-200 hover:border-emerald-400",
+  "Identified":       { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
+  "Under Mitigation": { bg: "#dbeafe", text: "#1d4ed8", border: "#93c5fd" },
+  "Resolved":         { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" },
 };
 
-// Dark theme variant (for super-admin portal)
 const STATUS_STYLE_DARK = {
-  "Identified":      "bg-slate-700/60 text-slate-300 border border-slate-600 hover:border-slate-400",
-  "Under Mitigation":"bg-blue-900/40 text-blue-300 border border-blue-700 hover:border-blue-500",
-  "Resolved":        "bg-emerald-900/40 text-emerald-300 border border-emerald-700 hover:border-emerald-500",
+  "Identified":       { bg: "#1e2a35", text: "#94a3b8", border: "#334155" },
+  "Under Mitigation": { bg: "#1e3a5f", text: "#93c5fd", border: "#1d4ed8" },
+  "Resolved":         { bg: "#064e3b", text: "#6ee7b7", border: "#047857" },
 };
 
-// ── Transition definitions ────────────────────────────────────────────────────
 const TRANSITIONS = {
   "Identified": [
-    {
-      to: "Under Mitigation",
-      label: "Start Mitigation",
-      icon: PlayCircle,
-      cls: "text-blue-600 hover:bg-blue-50",
-      clsDark: "text-blue-400 hover:bg-blue-900/40",
-    },
-    {
-      to: "Resolved",
-      label: "Resolve",
-      icon: CheckCircle2,
-      cls: "text-emerald-600 hover:bg-emerald-50",
-      clsDark: "text-emerald-400 hover:bg-emerald-900/40",
-    },
+    { to: "Under Mitigation", label: "Start Mitigation", icon: PlayCircle,   color: "#1d4ed8" },
+    { to: "Resolved",         label: "Resolve",          icon: CheckCircle2, color: "#065f46" },
   ],
   "Under Mitigation": [
-    {
-      to: "Resolved",
-      label: "Resolve",
-      icon: CheckCircle2,
-      cls: "text-emerald-600 hover:bg-emerald-50",
-      clsDark: "text-emerald-400 hover:bg-emerald-900/40",
-    },
-    {
-      to: "Identified",
-      label: "Reopen",
-      icon: RotateCcw,
-      cls: "text-slate-500 hover:bg-slate-100",
-      clsDark: "text-slate-400 hover:bg-slate-700",
-    },
+    { to: "Resolved",         label: "Resolve",          icon: CheckCircle2, color: "#065f46" },
+    { to: "Identified",       label: "Reopen",           icon: RotateCcw,    color: "#64748b" },
   ],
   "Resolved": [
-    {
-      to: "Under Mitigation",
-      label: "Re-mitigate",
-      icon: Zap,
-      cls: "text-blue-600 hover:bg-blue-50",
-      clsDark: "text-blue-400 hover:bg-blue-900/40",
-    },
-    {
-      to: "Identified",
-      label: "Reopen",
-      icon: RotateCcw,
-      cls: "text-slate-500 hover:bg-slate-100",
-      clsDark: "text-slate-400 hover:bg-slate-700",
-    },
+    { to: "Under Mitigation", label: "Re-mitigate",      icon: Zap,          color: "#1d4ed8" },
+    { to: "Identified",       label: "Reopen",           icon: RotateCcw,    color: "#64748b" },
   ],
 };
 
-/**
- * props:
- *   riskId   – UUID of the risk
- *   status   – current status string
- *   onChange – callback(newStatus) after a successful update
- *   dark     – boolean, use dark-theme variant (super-admin portal)
- */
 export default function StatusChanger({ riskId, status, onChange, dark = false }) {
   const [open,    setOpen]    = useState(false);
   const [loading, setLoading] = useState(false);
   const [current, setCurrent] = useState(status);
-  const ref = useRef(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
 
-  // Sync if parent re-renders with new status
   useEffect(() => { setCurrent(status); }, [status]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     if (!open) return;
     function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (btnRef.current && !btnRef.current.contains(e.target)) setOpen(false);
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  function handleOpen() {
+    if (loading) return;
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX });
+    }
+    setOpen((o) => !o);
+  }
+
   async function handleTransition(newStatus) {
     setOpen(false);
     setLoading(true);
     const prev = current;
-    setCurrent(newStatus); // optimistic
+    setCurrent(newStatus);
     try {
       await updateRiskStatus(riskId, newStatus);
       toast.success(`Status → ${newStatus}`);
       onChange?.(newStatus);
     } catch (err) {
-      setCurrent(prev); // rollback
+      setCurrent(prev);
       toast.error(err.response?.data?.detail || "Failed to update status");
     } finally {
       setLoading(false);
@@ -114,49 +77,59 @@ export default function StatusChanger({ riskId, status, onChange, dark = false }
 
   const transitions = TRANSITIONS[current] ?? [];
   const styleMap    = dark ? STATUS_STYLE_DARK : STATUS_STYLE;
+  const s           = styleMap[current] ?? { bg: "#f1f5f9", text: "#64748b", border: "#e2e8f0" };
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <>
       <button
-        onClick={() => !loading && setOpen((o) => !o)}
-        className={`inline-flex items-center gap-1 pl-2 pr-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors select-none
-          ${styleMap[current] ?? "bg-slate-100 text-slate-500 border border-slate-200"}
-          ${loading ? "opacity-60 cursor-wait" : "cursor-pointer"}`}
+        ref={btnRef}
+        onClick={handleOpen}
+        className="inline-flex items-center gap-1 pl-2 pr-1.5 py-0.5 text-[10px] font-bold transition-colors select-none border"
+        style={{
+          background: s.bg,
+          color: s.text,
+          borderColor: s.border,
+          cursor: loading ? "wait" : "pointer",
+          opacity: loading ? 0.6 : 1,
+        }}
       >
-        {loading
-          ? <Loader2 className="w-3 h-3 animate-spin" />
-          : null
-        }
+        {loading && <Loader2 className="w-3 h-3 animate-spin" />}
         {current}
         {!loading && transitions.length > 0 && (
           <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
         )}
       </button>
 
-      {open && transitions.length > 0 && (
-        <div className={`absolute z-50 top-full left-0 mt-1.5 w-44 rounded-xl shadow-xl overflow-hidden
-          ${dark
-            ? "bg-slate-800 border border-slate-700"
-            : "bg-white border border-slate-200"
-          }`}
+      {open && transitions.length > 0 && createPortal(
+        <div
+          className="fixed z-[9999] w-44 shadow-2xl border"
+          style={{
+            top: dropPos.top,
+            left: dropPos.left,
+            background: dark ? "#1e2530" : "#ffffff",
+            borderColor: dark ? "#334155" : "#e2e8f0",
+          }}
         >
-          <div className={`px-3 py-2 border-b text-[9px] font-black uppercase tracking-widest
-            ${dark ? "border-slate-700 text-slate-500" : "border-slate-100 text-slate-400"}`}>
+          <div
+            className="px-3 py-2 text-[9px] font-black uppercase tracking-widest border-b"
+            style={{ color: "#979DAB", borderColor: dark ? "#334155" : "#f1f5f9" }}
+          >
             Change status
           </div>
           {transitions.map((t) => (
             <button
               key={t.to}
               onClick={() => handleTransition(t.to)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold transition-colors text-left
-                ${dark ? t.clsDark : t.cls}`}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-left transition-colors hover:bg-black/5"
+              style={{ color: t.color }}
             >
               <t.icon className="w-3.5 h-3.5 flex-shrink-0" />
               {t.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import {
   LayoutDashboard, ShieldAlert, KanbanSquare,
-  ShieldCheck, LogOut, Menu, X, ChevronRight, Plus
+  ShieldCheck, LogOut, Menu, X, Plus, BarChart2
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
@@ -9,15 +9,16 @@ import useAppStore from "../../store/useAppStore";
 import { toast } from "sonner";
 
 const NAV = [
-  { to: "/staff", icon: LayoutDashboard, label: "My Dashboard", end: true },
-  { to: "/staff/risks", icon: ShieldAlert, label: "Risk Register" },
-  { to: "/staff/kanban", icon: KanbanSquare, label: "Kanban Board" },
+  { to: "/staff",            icon: LayoutDashboard, label: "My Dashboard", end: true },
+  { to: "/staff/risks",      icon: ShieldAlert,     label: "Risk Register"           },
+  { to: "/staff/kanban",     icon: KanbanSquare,    label: "Kanban Board"            },
+  { to: "/staff/analytics",  icon: BarChart2,       label: "Analytics"               },
 ];
 
 export default function StaffShell() {
-  const user = useAppStore((s) => s.user);
+  const user      = useAppStore((s) => s.user);
   const clearAuth = useAppStore((s) => s.clearAuth);
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const [open, setOpen] = useState(false);
 
   function handleLogout() {
@@ -27,103 +28,113 @@ export default function StaffShell() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen w-full overflow-hidden" style={{ background: "#DEDCDC" }}>
       {open && (
-        <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setOpen(false)} />
       )}
 
-      {/* Sidebar — clean white */}
+      {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
       <aside className={cn(
-        "fixed lg:relative inset-y-0 left-0 z-40 flex flex-col w-60",
-        "bg-white border-r border-slate-200 transition-transform duration-300",
+        "fixed lg:relative inset-y-0 left-0 z-40 flex flex-col w-60 transition-transform duration-200",
         open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-      )}>
+      )} style={{ background: "#191D23", borderRight: "1px solid #2a333d" }}>
+
         {/* Logo */}
-        <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 h-14 shrink-0" style={{ borderBottom: "1px solid #2a333d" }}>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-[#064E3B] flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-white" />
+            <div className="w-7 h-7 flex items-center justify-center" style={{ background: "#57707A" }}>
+              <ShieldCheck className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <p className="font-bold text-slate-800 text-sm">ERIMP</p>
-              <p className="text-[10px] text-slate-400">Staff Portal</p>
+              <p className="text-sm font-black uppercase tracking-widest" style={{ color: "#DEDCDC" }}>ERIMP</p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.15em]" style={{ color: "#57707A" }}>Staff Portal</p>
             </div>
           </div>
-          <button onClick={() => setOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-700">
+          <button onClick={() => setOpen(false)} className="lg:hidden" style={{ color: "#7E919F" }}>
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* User info */}
-        <div className="px-4 py-3 border-b border-slate-100">
-          <div className="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
-            <p className="text-xs font-semibold text-slate-700 truncate">{user?.full_name}</p>
-            <p className="text-[10px] text-slate-400 truncate mt-0.5">{user?.department_name ?? "No department"}</p>
+        {/* User */}
+        <div className="px-5 py-3 shrink-0" style={{ borderBottom: "1px solid #2a333d" }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 flex items-center justify-center shrink-0" style={{ background: "#57707A22", border: "1px solid #57707A55" }}>
+              <span className="text-xs font-black" style={{ color: "#57707A" }}>
+                {(user?.full_name || "S").charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold truncate" style={{ color: "#DEDCDC" }}>{user?.full_name}</p>
+              <p className="text-[10px] truncate" style={{ color: "#7E919F" }}>{user?.department_name ?? "No department"}</p>
+            </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto py-2">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               onClick={() => setOpen(false)}
-              className={({ isActive }) => cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all",
-                isActive
-                  ? "bg-emerald-50 text-[#064E3B] font-semibold border-l-2 border-[#064E3B] pl-[10px]"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-              )}
             >
               {({ isActive }) => (
-                <>
-                  <item.icon className={cn("w-4 h-4 shrink-0", isActive ? "text-[#064E3B]" : "text-slate-400")} />
-                  <span className="flex-1">{item.label}</span>
-                </>
+                <div
+                  className="flex items-center gap-3 px-5 py-2.5 text-sm transition-colors border-l-2"
+                  style={{
+                    color: isActive ? "#DEDCDC" : "#7E919F",
+                    borderLeftColor: isActive ? "#57707A" : "transparent",
+                    background: isActive ? "#57707A15" : "transparent",
+                  }}
+                >
+                  <item.icon className="w-4 h-4 shrink-0" style={{ color: isActive ? "#57707A" : "#57707A55" }} />
+                  <span className={isActive ? "font-semibold" : ""}>{item.label}</span>
+                </div>
               )}
             </NavLink>
           ))}
         </nav>
 
         {/* CTA */}
-        <div className="px-3 pb-2">
+        <div className="px-3 py-3 shrink-0" style={{ borderTop: "1px solid #2a333d" }}>
           <NavLink
             to="/staff/risks/new"
             onClick={() => setOpen(false)}
-            className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#064E3B] hover:bg-emerald-800 text-white rounded-xl text-sm font-bold transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors"
+            style={{ background: "#57707A", color: "#DEDCDC" }}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             Report a Risk
           </NavLink>
         </div>
 
         {/* Logout */}
-        <div className="px-3 pb-5 mt-1">
+        <div className="px-3 pb-3 shrink-0">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-red-500/10 hover:text-red-400"
+            style={{ color: "#57707A" }}
           >
             <LogOut className="w-4 h-4" />
-            <span>Sign out</span>
+            Sign out
           </button>
         </div>
       </aside>
 
-      {/* Main */}
+      {/* ── Main ────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <header className="flex items-center gap-4 px-6 py-3 bg-white border-b border-slate-100">
-          <button onClick={() => setOpen(true)} className="lg:hidden text-slate-400 hover:text-slate-700">
+        <header className="flex items-center gap-4 px-6 h-14 shrink-0" style={{ background: "#ffffff", borderBottom: "1px solid #C5BAC4" }}>
+          <button onClick={() => setOpen(true)} className="lg:hidden" style={{ color: "#979DAB" }}>
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex-1">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              {user?.department_name ? `${user.department_name} · ERIMP` : "ERIMP Staff Portal"}
-            </p>
-          </div>
+          <ShieldCheck className="w-4 h-4 shrink-0" style={{ color: "#57707A" }} />
+          <span className="text-xs font-bold uppercase tracking-[0.15em] flex-1" style={{ color: "#979DAB" }}>
+            {user?.department_name ? `${user.department_name} · ERIMP` : "ERIMP Staff Portal"}
+          </span>
         </header>
-        <main className="flex-1 overflow-y-auto p-5 md:p-7">
+
+        <main className="flex-1 overflow-y-auto p-6" style={{ background: "#DEDCDC" }}>
           <Outlet />
         </main>
       </div>

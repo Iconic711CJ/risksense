@@ -636,6 +636,17 @@ def list_risks(
     }
 
 
+@app.get("/risks/{risk_id}")
+def get_risk(risk_id: str, user: AuthUser = Depends(verify_token)):
+    q = supabase_admin.table("risks").select("*, departments(name, code)").eq("id", risk_id).limit(1)
+    if user.role == "department_user":
+        q = q.eq("department_id", user.department_id)
+    result = q.execute()
+    if not result.data:
+        raise HTTPException(404, "Risk not found")
+    return result.data[0]
+
+
 @app.post("/risks")
 def create_risk(data: RiskCreate, user: AuthUser = Depends(verify_token)):
     # Determine department
@@ -900,6 +911,24 @@ def get_audit_log(
     user: AuthUser = Depends(require_admin),
 ):
     q = supabase_admin.table("audit_log").select("*").order("created_at", desc=True)
+
+    # Admins only see logs from users in their own department.
+    # Super admins see the full platform history.
+    if user.role == "admin" and user.department_id:
+        dept_users = supabase_admin.table("profiles") \
+            .select("id") \
+            .eq("department_id", user.department_id) \
+            .execute()
+        dept_user_ids = [u["id"] for u in (dept_users.data or [])]
+        # Always include the admin's own id in case they're not in profiles list
+        if user.id not in dept_user_ids:
+            dept_user_ids.append(user.id)
+        if dept_user_ids:
+            q = q.in_("user_id", dept_user_ids)
+        else:
+            # No dept members — return empty
+            return {"logs": [], "total": 0, "page": page, "page_size": page_size, "total_pages": 0}
+
     if action:
         q = q.eq("action", action)
     if user_id:
@@ -919,6 +948,7 @@ def get_audit_log(
         "page": page,
         "page_size": page_size,
         "total_pages": (total + page_size - 1) // page_size,
+        "scoped_to_department": user.role == "admin",
     }
 
 

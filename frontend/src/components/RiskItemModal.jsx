@@ -6,9 +6,8 @@ import { Label } from "./ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { addRiskItem, updateRiskItem } from "../services/api";
-import { scoreToRating, getRiskClass } from "../lib/utils";
+import { scoreToRating } from "../lib/utils";
 import { Loader2, Zap } from "lucide-react";
-import { cn } from "../lib/utils";
 
 const CATEGORIES = [
   "Political","Economic","Societal","Technological","Environmental",
@@ -18,6 +17,7 @@ const CATEGORIES = [
 const RATINGS = [1,2,3,4,5];
 const L_LABELS = {1:"Rare",2:"Unlikely",3:"Moderate",4:"Likely",5:"Common"};
 const I_LABELS = {1:"Insignificant",2:"Minor",3:"Moderate",4:"Major",5:"Critical"};
+const RATING_GRADIENT = {1:"#16a34a",2:"#84cc16",3:"#ca8a04",4:"#ea580c",5:"#dc2626"};
 const TREATMENT_OPTIONS = ["Treat","Tolerate","Transfer","Terminate"];
 const CONTROL_RATINGS = ["Effective","Partially Effective","Ineffective","Not Assessed"];
 const TIMEFRAMES = ["Immediate","Short-term (1-3 months)","Medium-term (3-6 months)","Long-term (6-12 months)","Ongoing"];
@@ -34,39 +34,58 @@ function RatingSelector({ value, onChange, labels, label }) {
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-foreground">{label}</Label>
       <div className="flex gap-1">
-        {RATINGS.map((r) => (
-          <button
-            key={r}
-            type="button"
-            onClick={() => onChange(value === r ? null : r)}
-            className={cn(
-              "flex-1 h-9 rounded-lg border text-xs font-semibold transition-all duration-150",
-              value === r
-                ? "bg-primary/20 border-primary/50 text-primary"
-                : "border-border bg-secondary/30 text-muted-foreground hover:border-border/80 hover:text-foreground"
-            )}
-            title={labels[r]}
-          >
-            {r}
-          </button>
-        ))}
+        {RATINGS.map((r) => {
+          const color = RATING_GRADIENT[r];
+          const selected = value === r;
+          return (
+            <button
+              key={r}
+              type="button"
+              onClick={() => onChange(selected ? null : r)}
+              className="flex-1 h-9 rounded-lg border text-xs font-semibold transition-all duration-150"
+              style={{
+                background: selected ? color : `${color}22`,
+                borderColor: color,
+                color: selected ? "#fff" : color,
+                boxShadow: selected ? `0 2px 8px ${color}80` : "none",
+                fontWeight: 700,
+              }}
+              title={labels[r]}
+            >
+              {r}
+            </button>
+          );
+        })}
       </div>
       {value && <p className="text-[10px] text-muted-foreground">{labels[value]}</p>}
     </div>
   );
 }
 
+function mixHex(h1, h2) {
+  const p = (h) => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+  const [r1,g1,b1] = p(h1), [r2,g2,b2] = p(h2);
+  return `#${[Math.round((r1+r2)/2),Math.round((g1+g2)/2),Math.round((b1+b2)/2)].map(v=>v.toString(16).padStart(2,'0')).join('')}`;
+}
+
 function RiskScoreDisplay({ likelihood, impact, label }) {
   if (!likelihood || !impact) return null;
   const score = likelihood * impact;
   const rating = scoreToRating(score);
+  const bg = mixHex(RATING_GRADIENT[likelihood], RATING_GRADIENT[impact]);
   return (
-    <div className={cn("rounded-lg border px-3 py-2 flex items-center justify-between", getRiskClass(rating))}>
-      <div className="flex items-center gap-1.5">
-        <Zap className="w-3.5 h-3.5" />
-        <span className="text-xs font-semibold">{label}</span>
+    <div
+      className="rounded-xl px-4 py-3 flex items-center justify-between"
+      style={{ background: bg, boxShadow: `0 4px 16px ${bg}66` }}
+    >
+      <div className="flex items-center gap-2">
+        <Zap className="w-4 h-4 text-white" />
+        <span className="text-xs font-bold uppercase tracking-widest text-white/80">{label}</span>
       </div>
-      <span className="text-sm font-bold">{score} — {rating}</span>
+      <div className="flex items-center gap-3">
+        <span className="text-2xl font-black text-white">{score}</span>
+        <span className="text-sm font-bold text-white/90 bg-white/20 px-2 py-0.5 rounded-lg">{rating}</span>
+      </div>
     </div>
   );
 }

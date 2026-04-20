@@ -95,6 +95,9 @@ export const deleteUser = (id) =>
 export const getRisks = (params = {}) =>
   api.get("/risks", { params }).then((r) => r.data);
 
+export const getRisk = (id) =>
+  api.get(`/risks/${id}`).then((r) => r.data);
+
 export const createRisk = (data) =>
   api.post("/risks", data).then((r) => r.data);
 

@@ -19,9 +19,15 @@ export default {
         card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        none: "0px",
+        sm:   "0px",
+        DEFAULT: "0px",
+        md:   "0px",
+        lg:   "0px",
+        xl:   "0px",
+        "2xl": "0px",
+        "3xl": "0px",
+        full: "9999px",
       },
       fontFamily: {
         sans: ["'Inter'", "system-ui", "sans-serif"],

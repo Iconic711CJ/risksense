@@ -5,26 +5,27 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 161 88% 17%; /* Dark Green #064E3B */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 161 88% 97%; /* Very Light Green #ECFDF5 */
-    --secondary-foreground: 161 88% 17%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 25 95% 53%; /* Orange #F97316 */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 161 88% 17%;
-    --radius: 0.5rem;
+    /* Palette: #191D23 #57707A #7E919F #979DAB #C5BAC4 #DEDCDC */
+    --background:          0 3% 87%;     /* #DEDCDC */
+    --foreground:        216 17% 12%;    /* #191D23 */
+    --card:                0 0%  99%;    /* near-white cards */
+    --card-foreground:   216 17% 12%;
+    --popover:             0 0%  99%;
+    --popover-foreground:216 17% 12%;
+    --primary:           197 17% 41%;    /* #57707A */
+    --primary-foreground:  0  3% 87%;    /* #DEDCDC */
+    --secondary:         305  9% 75%;    /* #C5BAC4 */
+    --secondary-foreground: 216 17% 12%;
+    --muted:             205 15% 56%;    /* #7E919F */
+    --muted-foreground:  222 11% 63%;    /* #979DAB */
+    --accent:            197 17% 41%;    /* #57707A */
+    --accent-foreground:   0  3% 87%;
+    --destructive:         0 72% 51%;
+    --destructive-foreground: 0 3% 87%;
+    --border:            305  9% 80%;    /* #C5BAC4 lightened */
+    --input:             305  9% 80%;
+    --ring:              197 17% 41%;
+    --radius: 0px;
   }
 }
 
@@ -33,6 +34,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
   }
   h1, h2, h3, h4 {
     font-family: 'Outfit', system-ui, sans-serif;
@@ -42,37 +44,30 @@
 
 @layer utilities {
   .minimal-card {
-    @apply bg-white border border-border shadow-sm rounded-xl transition-all duration-200 hover:shadow-md;
+    @apply bg-white border border-border shadow-sm transition-all duration-200 hover:shadow-md;
   }
 
   .nav-active {
-    @apply bg-secondary text-primary border-r-4 border-primary font-semibold;
+    @apply bg-secondary text-primary font-semibold;
   }
-  
+
   .nav-inactive {
     @apply text-muted-foreground hover:bg-slate-50 hover:text-foreground;
   }
 
-  .risk-low {
-    @apply bg-green-50 text-green-700 border-green-100;
-  }
-  .risk-tolerable {
-    @apply bg-yellow-50 text-yellow-700 border-yellow-100;
-  }
-  .risk-high {
-    @apply bg-orange-50 text-orange-700 border-orange-100;
-  }
-  .risk-critical {
-    @apply bg-red-50 text-red-700 border-red-100;
-  }
-  
+  .risk-low      { @apply bg-green-50  text-green-700  border-green-200; }
+  .risk-tolerable{ @apply bg-yellow-50 text-yellow-700 border-yellow-200; }
+  .risk-high     { @apply bg-orange-50 text-orange-700 border-orange-200; }
+  .risk-critical { @apply bg-red-50    text-red-700    border-red-200; }
+
   .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
   .scrollbar-thin::-webkit-scrollbar-track { @apply bg-transparent; }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full;
-  }
+  .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-slate-300; }
 
   .font-display { font-family: 'Outfit', system-ui, sans-serif; }
+
+  /* Structural divider lines for professional layout */
+  .section-divider { @apply border-t border-slate-200; }
 }
 
 /* Custom button styles for the new palette */

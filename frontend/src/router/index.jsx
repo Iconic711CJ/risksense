@@ -20,6 +20,7 @@ const AdminRisks        = lazy(() => import("../portals/admin/AdminRisks"));
 const AdminDepts        = lazy(() => import("../portals/admin/AdminDepts"));
 const AdminAudit        = lazy(() => import("../portals/admin/AdminAudit"));
 const AdminAddRisk      = lazy(() => import("../portals/admin/AdminAddRisk"));
+const RiskDetailPage    = lazy(() => import("../pages/RiskDetailPage"));
 
 // Staff portal
 const StaffShell        = lazy(() => import("../portals/staff/StaffShell"));
@@ -27,6 +28,7 @@ const StaffDashboard    = lazy(() => import("../portals/staff/StaffDashboard"));
 const StaffRisks        = lazy(() => import("../portals/staff/StaffRisks"));
 const StaffKanban       = lazy(() => import("../portals/staff/StaffKanban"));
 const StaffAddRisk      = lazy(() => import("../portals/staff/StaffAddRisk"));
+const StaffAnalytics    = lazy(() => import("../portals/staff/StaffAnalytics"));
 
 // ── Loading fallback ──────────────────────────────────────────────────────────
 function PageLoader() {
@@ -130,6 +132,7 @@ const router = createBrowserRouter([
       { path: "staff", element: <Wrap><AdminStaff /></Wrap> },
       { path: "risks", element: <Wrap><AdminRisks /></Wrap> },
       { path: "risks/new", element: <Wrap><AdminAddRisk /></Wrap> },
+      { path: "risks/:id", element: <Wrap><RiskDetailPage backPath="/admin/risks" editPath="/admin/risks" /></Wrap> },
       { path: "risks/:id/edit", element: <Wrap><AdminAddRisk /></Wrap> },
       { path: "departments", element: <Wrap><AdminDepts /></Wrap> },
       { path: "audit", element: <Wrap><AdminAudit /></Wrap> },
@@ -144,8 +147,10 @@ const router = createBrowserRouter([
       { index: true, element: <Wrap><StaffDashboard /></Wrap> },
       { path: "risks", element: <Wrap><StaffRisks /></Wrap> },
       { path: "risks/new", element: <Wrap><StaffAddRisk /></Wrap> },
+      { path: "risks/:id", element: <Wrap><RiskDetailPage backPath="/staff/risks" editPath="/staff/risks" /></Wrap> },
       { path: "risks/:id/edit", element: <Wrap><StaffAddRisk /></Wrap> },
       { path: "kanban", element: <Wrap><StaffKanban /></Wrap> },
+      { path: "analytics", element: <Wrap><StaffAnalytics /></Wrap> },
     ],
   },
 

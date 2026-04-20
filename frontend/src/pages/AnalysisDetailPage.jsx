@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { getAnalysis, deleteRiskItem, deleteRiskItemsBulk, exportAnalysis, uploadFile } from "../services/api";
@@ -91,13 +92,13 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
   const handleExport = async () => {
     setExporting(true);
     const loadingToast = toast.loading("Exporting analysis...");
-    try { 
+    try {
       await exportAnalysis(analysisId, analysis.name);
       toast.success("Analysis exported successfully", { id: loadingToast });
     } catch (err) {
       toast.error("Export failed", { id: loadingToast });
-    } finally { 
-      setExporting(false); 
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -106,23 +107,23 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
     if (!file) return;
     setUploadingFile(true);
     const loadingToast = toast.loading("Importing risk items...");
-    try { 
-      const res = await uploadFile(analysisId, file); 
+    try {
+      const res = await uploadFile(analysisId, file);
       toast.success(`Successfully imported ${res.imported} risk items`, { id: loadingToast });
-      load(); 
+      load();
     } catch (err) {
       toast.error("Failed to import file", { id: loadingToast });
-    } finally { 
-      setUploadingFile(false); 
-      e.target.value = ""; 
+    } finally {
+      setUploadingFile(false);
+      e.target.value = "";
     }
   };
 
-  const handleItemSaved = () => { 
+  const handleItemSaved = () => {
     toast.success("Risk item saved");
-    load(); 
-    setModalOpen(false); 
-    setEditItem(null); 
+    load();
+    setModalOpen(false);
+    setEditItem(null);
   };
 
   const handleSort = (col) => {
@@ -189,7 +190,7 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
   });
   const categoryData = Object.entries(catAvg).map(([name, scores]) => ({
     name,
-    avg: scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : 0
+    avg: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
   }));
 
   const ratingCounts = { Low: 0, Tolerable: 0, High: 0, Critical: 0 };
@@ -318,7 +319,7 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
                         <XAxis type="number" domain={[0, 25]} tick={{ fontSize: 10, fill: "#6b7280" }} />
                         <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#6b7280" }} width={90} />
                         <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="avg" name="Avg Score" radius={[0,4,4,0]}>
+                        <Bar dataKey="avg" name="Avg Score" radius={[0, 4, 4, 0]}>
                           {categoryData.map((d, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                         </Bar>
                       </BarChart>
@@ -373,18 +374,18 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
             <div className="flex items-center gap-2 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input placeholder="Search items..." className="pl-8 h-8 text-xs" value={search} onChange={(e) => {setSearch(e.target.value); setPage(1);}} />
+                <Input placeholder="Search items..." className="pl-8 h-8 text-xs" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
               </div>
               <select
                 value={filterCat}
-                onChange={(e) => {setFilterCat(e.target.value); setPage(1);}}
+                onChange={(e) => { setFilterCat(e.target.value); setPage(1); }}
                 className="h-8 px-3 rounded-lg border border-border bg-secondary/50 text-xs text-foreground"
               >
                 {categories.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
               <select
                 value={filterRating}
-                onChange={(e) => {setFilterRating(e.target.value); setPage(1);}}
+                onChange={(e) => { setFilterRating(e.target.value); setPage(1); }}
                 className="h-8 px-3 rounded-lg border border-border bg-secondary/50 text-xs text-foreground"
               >
                 {ratings.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -399,8 +400,8 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
                   <thead>
                     <tr className="border-b border-border bg-secondary/30">
                       <th className="px-3 py-2.5 text-left w-10">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           className="rounded border-border accent-primary w-3.5 h-3.5 cursor-pointer"
                           checked={paginated.length > 0 && selectedIds.length === paginated.length}
                           onChange={(e) => setSelectedIds(e.target.checked ? paginated.map(i => i.id) : [])}
@@ -449,7 +450,7 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
                           onClick={() => setExpandedRow(expandedRow === item.id ? null : item.id)}
                         >
                           <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                            <input 
+                            <input
                               type="checkbox"
                               className="rounded border-border accent-primary w-3.5 h-3.5 cursor-pointer"
                               checked={selectedIds.includes(item.id)}
@@ -603,8 +604,8 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
                   <ResponsiveContainer width="100%" height={220}>
                     <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -10 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                      <XAxis type="number" dataKey="x" name="Likelihood" domain={[0,6]} tick={{ fontSize: 10, fill: "#6b7280" }} label={{ value: "Likelihood", position: "bottom", fontSize: 10, fill: "#6b7280" }} />
-                      <YAxis type="number" dataKey="y" name="Impact" domain={[0,6]} tick={{ fontSize: 10, fill: "#6b7280" }} label={{ value: "Impact", angle: -90, position: "left", fontSize: 10, fill: "#6b7280" }} />
+                      <XAxis type="number" dataKey="x" name="Likelihood" domain={[0, 6]} tick={{ fontSize: 10, fill: "#6b7280" }} label={{ value: "Likelihood", position: "bottom", fontSize: 10, fill: "#6b7280" }} />
+                      <YAxis type="number" dataKey="y" name="Impact" domain={[0, 6]} tick={{ fontSize: 10, fill: "#6b7280" }} label={{ value: "Impact", angle: -90, position: "left", fontSize: 10, fill: "#6b7280" }} />
                       <ZAxis type="number" dataKey="z" range={[40, 200]} />
                       <Tooltip content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
@@ -640,8 +641,8 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
                       <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} domain={[0, 25]} />
                       <Tooltip content={<CustomTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Bar dataKey="inherent" name="Inherent" fill="#fb923c" radius={[3,3,0,0]} />
-                      <Bar dataKey="residual" name="Residual" fill="#4ade80" radius={[3,3,0,0]} />
+                      <Bar dataKey="inherent" name="Inherent" fill="#fb923c" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="residual" name="Residual" fill="#4ade80" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -662,7 +663,7 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
                       <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#6b7280" }} />
                       <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} allowDecimals={false} />
                       <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="count" name="Count" radius={[3,3,0,0]}>
+                      <Bar dataKey="count" name="Count" radius={[3, 3, 0, 0]}>
                         {items.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                       </Bar>
                     </BarChart>
