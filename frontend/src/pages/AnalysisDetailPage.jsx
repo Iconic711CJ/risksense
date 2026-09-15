@@ -12,6 +12,7 @@ import RiskBadge from "../components/RiskBadge";
 import RiskMatrix from "../components/RiskMatrix";
 import RiskItemModal from "../components/RiskItemModal";
 import StatCard from "../components/StatCard";
+import ReportGenerator from "../components/reports/ReportGenerator";
 import { getRiskColor, CHART_COLORS, formatDate, scoreToRating } from "../lib/utils";
 import {
   ArrowLeft, Plus, Download, Upload, Search, Trash2, Pencil,
@@ -50,6 +51,7 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
   const [page, setPage] = useState(1);
@@ -242,7 +244,11 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
           </label>
           <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
             {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-            Export
+            Export Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
+            <FileText className="w-3.5 h-3.5 text-primary" />
+            Export PDF
           </Button>
           <Button size="sm" onClick={() => { setEditItem(null); setModalOpen(true); }}>
             <Plus className="w-3.5 h-3.5" /> Add Risk
@@ -707,7 +713,22 @@ export default function AnalysisDetailPage({ analysisId, onBack }) {
         item={editItem}
         onSaved={handleItemSaved}
       />
+
+      <ReportGenerator
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        risks={(analysis.items || []).map((i) => ({
+          risk_code: i.risk_id,
+          description: i.risk_description,
+          likelihood: i.inherent_likelihood,
+          impact: i.inherent_impact,
+          risk_score: i.inherent_risk_score,
+          risk_rating: i.inherent_risk_rating,
+          owner_name: i.risk_owner,
+          status: i.status || "Identified",
+        }))}
+        deptTitle={analysis.name}
+      />
     </div>
   );
-
 }

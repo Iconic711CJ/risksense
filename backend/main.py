@@ -1,13 +1,17 @@
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, UploadFile, File, Form
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, field_validator
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import os
+import json
+import pandas as pd
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from collections import defaultdict
+from template_parser import parse_template_bytes
 
 load_dotenv()
 
@@ -342,6 +346,13 @@ class DepartmentUpdate(BaseModel):
 
 class SuggestTagsRequest(BaseModel):
     description: str
+
+
+class AnalysisCreate(BaseModel):
+    name: str
+    type: Optional[str] = "Operational"
+    description: Optional[str] = None
+    contact_person: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -950,6 +961,278 @@ def get_audit_log(
         "total_pages": (total + page_size - 1) // page_size,
         "scoped_to_department": user.role == "admin",
     }
+
+
+# ---------------------------------------------------------------------------
+# Analyses & Template File Imports / Exports
+# ---------------------------------------------------------------------------
+
+@app.get("/analyses")
+def list_analyses(user: AuthUser = Depends(verify_token)):
+    q = supabase_admin.table("analyses").select("*")
+    if user.role == "department_user":
+        q = q.eq("created_by", user.id)
+    result = q.order("created_at", desc=True).execute()
+    analyses = result.data or []
+
+    for a in analyses:
+        items_res = supabase_admin.table("risk_items").select("id").eq("analysis_id", a["id"]).execute()
+        a["item_count"] = len(items_res.data or [])
+    return analyses
+
+
+@app.post("/analyses")
+def create_analysis(data: AnalysisCreate, user: AuthUser = Depends(verify_token)):
+    row = {
+        "name": data.name,
+        "type": data.type or "Operational",
+        "description": data.description,
+        "contact_person": data.contact_person or user.full_name,
+        "created_by": user.id,
+    }
+    res = supabase_admin.table("analyses").insert(row).execute()
+    if not res.data:
+        raise HTTPException(500, "Failed to create analysis")
+    log_audit(user, "CREATE_ANALYSIS", "analyses", res.data[0]["id"], new_value=row)
+    return res.data[0]
+
+
+@app.get("/analyses/{analysis_id}")
+def get_analysis_detail(analysis_id: str, user: AuthUser = Depends(verify_token)):
+    res = supabase_admin.table("analyses").select("*").eq("id", analysis_id).limit(1).execute()
+    if not res.data:
+        raise HTTPException(404, "Analysis not found")
+    analysis = res.data[0]
+
+    items_res = supabase_admin.table("risk_items").select("*").eq("analysis_id", analysis_id).order("created_at", desc=False).execute()
+    items = items_res.data or []
+
+    total = len(items)
+    avg_inh = round(sum(i.get("inherent_risk_score") or 0 for i in items) / total, 1) if total else 0
+    avg_res = round(sum(i.get("residual_risk_score") or 0 for i in items) / total, 1) if total else 0
+    reduction = round(((avg_inh - avg_res) / avg_inh) * 100, 1) if avg_inh > 0 else 0
+
+    analysis["items"] = items
+    analysis["stats"] = {
+        "total": total,
+        "avg_inherent": avg_inh,
+        "avg_residual": avg_res,
+        "risk_reduction": max(0, reduction),
+    }
+    return analysis
+
+
+@app.delete("/analyses/{analysis_id}")
+def delete_analysis(analysis_id: str, user: AuthUser = Depends(verify_token)):
+    existing = supabase_admin.table("analyses").select("*").eq("id", analysis_id).limit(1).execute()
+    if not existing.data:
+        raise HTTPException(404, "Analysis not found")
+
+    supabase_admin.table("analyses").delete().eq("id", analysis_id).execute()
+    log_audit(user, "DELETE_ANALYSIS", "analyses", analysis_id)
+    return {"deleted": True}
+
+
+@app.post("/upload/{analysis_id}")
+async def upload_file_to_analysis(
+    analysis_id: str,
+    file: UploadFile = File(...),
+    mapping: Optional[str] = Form(None),
+    user: AuthUser = Depends(verify_token)
+):
+    analysis_res = supabase_admin.table("analyses").select("id").eq("id", analysis_id).limit(1).execute()
+    if not analysis_res.data:
+        raise HTTPException(404, "Analysis not found")
+
+    content = await file.read()
+    custom_map = None
+    if mapping:
+        try:
+            custom_map = json.loads(mapping)
+        except Exception:
+            pass
+
+    try:
+        parsed_items, raw_columns = parse_template_bytes(content, file.filename, custom_map)
+    except Exception as e:
+        raise HTTPException(400, f"Error parsing file: {str(e)}")
+
+    if not parsed_items:
+        raise HTTPException(400, detail="MappingRequired", headers={"columns": json.dumps(raw_columns)})
+
+    rows_to_insert = []
+    for item in parsed_items:
+        item["analysis_id"] = analysis_id
+        item["item"] = item.get("risk_description", "")[:50]
+        rows_to_insert.append(item)
+
+    if rows_to_insert:
+        supabase_admin.table("risk_items").insert(rows_to_insert).execute()
+
+    log_audit(user, "IMPORT_RISK_ITEMS", "risk_items", analysis_id, new_value={"count": len(rows_to_insert)})
+    return {"imported": len(rows_to_insert), "columns": raw_columns}
+
+
+@app.post("/risks/import")
+async def import_risks_to_department(
+    dept_id: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    mapping: Optional[str] = Form(None),
+    user: AuthUser = Depends(verify_token)
+):
+    target_dept_id = dept_id or user.department_id
+    if not target_dept_id:
+        if user.role in {"admin", "super_admin"}:
+            raise HTTPException(400, "Please select a target department for import")
+        else:
+            raise HTTPException(400, "User has no assigned department")
+
+    dept_res = supabase_admin.table("departments").select("code").eq("id", target_dept_id).limit(1).execute()
+    if not dept_res.data:
+        raise HTTPException(404, "Department not found")
+    dept_code = dept_res.data[0]["code"]
+
+    content = await file.read()
+    custom_map = None
+    if mapping:
+        try:
+            custom_map = json.loads(mapping)
+        except Exception:
+            pass
+
+    try:
+        parsed_items, raw_columns = parse_template_bytes(content, file.filename, custom_map)
+    except Exception as e:
+        raise HTTPException(400, f"Error parsing file: {str(e)}")
+
+    if not parsed_items:
+        raise HTTPException(400, detail="MappingRequired", headers={"columns": json.dumps(raw_columns)})
+
+    inserted_risks = []
+    for item in parsed_items:
+        risk_code = generate_risk_code(dept_code, target_dept_id)
+        row = {
+            "risk_code": risk_code,
+            "department_id": target_dept_id,
+            "description": item.get("risk_description") or item.get("item") or "Imported Risk",
+            "category": item.get("category") or "Operational",
+            "tags": suggest_tags(item.get("risk_description", "")),
+            "likelihood": item.get("inherent_likelihood", 3),
+            "impact": item.get("inherent_impact", 3),
+            "owner_id": user.id,
+            "owner_name": item.get("risk_owner") or user.full_name,
+            "status": item.get("status") or "Identified",
+            "mitigation_plan": item.get("treatment_actions") or item.get("controls") or "",
+        }
+        r = supabase_admin.table("risks").insert(row).execute()
+        if r.data:
+            inserted_risks.append(r.data[0])
+
+    log_audit(user, "IMPORT_RISKS", "risks", target_dept_id, new_value={"count": len(inserted_risks)})
+    return {"imported": len(inserted_risks), "risks": inserted_risks}
+
+
+@app.get("/export/{analysis_id}")
+def export_analysis_excel(analysis_id: str, user: AuthUser = Depends(verify_token)):
+    analysis_res = supabase_admin.table("analyses").select("*").eq("id", analysis_id).limit(1).execute()
+    if not analysis_res.data:
+        raise HTTPException(404, "Analysis not found")
+    analysis = analysis_res.data[0]
+
+    items_res = supabase_admin.table("risk_items").select("*").eq("analysis_id", analysis_id).execute()
+    items = items_res.data or []
+
+    df = pd.DataFrame(items)
+    if not df.empty:
+        col_rename = {
+            "risk_id": "Risk ID",
+            "key_business_process": "Key Business Process / Objective",
+            "risk_description": "Risk Description",
+            "category": "Category",
+            "causes": "Causes",
+            "consequence": "Consequence",
+            "inherent_likelihood": "Likelihood (1–5)",
+            "inherent_impact": "Impact (1–5)",
+            "inherent_risk_score": "Inherent Risk Score",
+            "inherent_risk_rating": "Inherent Risk Rating",
+            "controls": "Existing Controls",
+            "control_rating": "Control Rating",
+            "residual_likelihood": "Residual Likelihood",
+            "residual_impact": "Residual Impact",
+            "residual_risk_score": "Residual Risk Score",
+            "residual_risk_rating": "Residual Risk Rating",
+            "treatment_option": "Treatment Option",
+            "treatment_actions": "Treatment Actions (SMART)",
+            "timeframe": "Timeframe",
+            "risk_owner": "Risk Owner",
+            "status": "Status",
+        }
+        df = df.rename(columns={k: v for k, v in col_rename.items() if k in df.columns})
+        # Filter out internal db columns
+        cols_to_keep = [v for v in col_rename.values() if v in df.columns]
+        if cols_to_keep:
+            df = df[cols_to_keep]
+
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df.to_excel(writer, sheet_name="Risk Register", index=False)
+    buf.seek(0)
+
+    filename = f"{analysis['name'].replace(' ', '_')}_risk_register.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@app.get("/templates/download/{template_name}")
+def download_template_file(template_name: str):
+    valid_templates = {
+        "operational": "operational_risk_register_template.xlsx",
+        "strategic": "strategic_risk_register_template.xlsx",
+        "csv": "risk_import_template.csv",
+    }
+    filename = valid_templates.get(template_name.lower())
+    if not filename:
+        raise HTTPException(404, "Template not found")
+
+    template_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates", filename))
+    if not os.path.exists(template_path):
+        raise HTTPException(404, f"Template file {filename} not found on server")
+
+    media_type = "text/csv" if filename.endswith(".csv") else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    return FileResponse(template_path, media_type=media_type, filename=filename)
+
+
+@app.post("/risk-items")
+def add_risk_item(data: dict, user: AuthUser = Depends(verify_token)):
+    res = supabase_admin.table("risk_items").insert(data).execute()
+    if not res.data:
+        raise HTTPException(500, "Failed to add risk item")
+    return res.data[0]
+
+
+@app.put("/risk-items/{item_id}")
+def update_risk_item(item_id: str, data: dict, user: AuthUser = Depends(verify_token)):
+    res = supabase_admin.table("risk_items").update(data).eq("id", item_id).execute()
+    if not res.data:
+        raise HTTPException(500, "Failed to update risk item")
+    return res.data[0]
+
+
+@app.delete("/risk-items/{item_id}")
+def delete_risk_item(item_id: str, user: AuthUser = Depends(verify_token)):
+    supabase_admin.table("risk_items").delete().eq("id", item_id).execute()
+    return {"deleted": True}
+
+
+@app.post("/risk-items/bulk-delete")
+def delete_risk_items_bulk(data: dict, user: AuthUser = Depends(verify_token)):
+    ids = data.get("ids", [])
+    if ids:
+        supabase_admin.table("risk_items").delete().in_("id", ids).execute()
+    return {"deleted": len(ids)}
 
 
 if __name__ == "__main__":

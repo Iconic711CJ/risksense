@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Edit2, Trash2, Loader2, ShieldAlert, Tag,
   User, Building2, Calendar, Clock, TrendingUp, AlertTriangle,
-  CheckCircle, Activity, Zap, Target,
+  CheckCircle, Activity, Zap, Target, FileText,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import useAppStore from "../store/useAppStore";
+import { exportSingleRiskPDF } from "../utils/pdfExport";
 
 // ── constants ────────────────────────────────────────────────────────────────
 const LIKELIHOOD_LABELS = { 1: "Rare", 2: "Unlikely", 3: "Possible", 4: "Likely", 5: "Certain" };
@@ -194,25 +195,34 @@ export default function RiskDetailPage({ backPath, editPath }) {
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <Link
-              to={editPath ? `${editPath}/${id}/edit` : `edit`}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-[#064E3B] hover:border-[#064E3B] text-sm font-semibold transition-all shadow-sm"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-              Edit
-            </Link>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-red-200 text-red-500 hover:bg-red-50 text-sm font-semibold transition-all shadow-sm disabled:opacity-50"
-            >
-              {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              Delete
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => exportSingleRiskPDF(risk, user)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#064E3B] hover:border-[#064E3B] text-sm font-semibold transition-all shadow-sm"
+          >
+            <FileText className="w-3.5 h-3.5 text-[#064E3B]" />
+            Export PDF
+          </button>
+          {isAdmin && (
+            <>
+              <Link
+                to={editPath ? `${editPath}/${id}/edit` : `edit`}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-[#064E3B] hover:border-[#064E3B] text-sm font-semibold transition-all shadow-sm"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                Edit
+              </Link>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-red-200 text-red-500 hover:bg-red-50 text-sm font-semibold transition-all shadow-sm disabled:opacity-50"
+              >
+                {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Delete
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Hero card */}

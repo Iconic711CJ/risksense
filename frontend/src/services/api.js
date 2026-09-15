@@ -1,7 +1,7 @@
 import axios from "axios";
 import useAppStore from "../store/useAppStore";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
 
 const api = axios.create({ baseURL: BASE_URL });
 
@@ -54,6 +54,33 @@ export const exportAnalysis = (analysisId, name) => {
     const a = document.createElement("a");
     a.href = url;
     a.download = `${name.replace(/\s+/g, "_")}_risk_register.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+};
+
+export const importRisksDirect = (deptId, file, mapping) => {
+  const form = new FormData();
+  form.append("file", file);
+  if (deptId) form.append("dept_id", deptId);
+  if (mapping) form.append("mapping", JSON.stringify(mapping));
+  return api.post("/risks/import", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }).then((r) => r.data);
+};
+
+export const downloadTemplate = (templateName) => {
+  return api.get(`/templates/download/${templateName}`, { responseType: "blob" }).then((r) => {
+    const filenames = {
+      operational: "operational_risk_register_template.xlsx",
+      strategic: "strategic_risk_register_template.xlsx",
+      csv: "risk_import_template.csv",
+    };
+    const filename = filenames[templateName.toLowerCase ? templateName.toLowerCase() : templateName] || "risk_template.xlsx";
+    const url = URL.createObjectURL(r.data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   });

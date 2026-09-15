@@ -101,13 +101,21 @@ export default function ReportGenerator({ open, onClose, summary, deptData = [],
 
       let y = 36;
 
-      if (summary) {
+      const effectiveSummary = summary || {
+        total_risks: risks.length,
+        critical_count: risks.filter((r) => r.risk_rating === "Critical").length,
+        high_count: risks.filter((r) => r.risk_rating === "High").length,
+        under_mitigation_count: risks.filter((r) => r.status === "Under Mitigation").length,
+        resolved_count: risks.filter((r) => r.status === "Resolved").length,
+      };
+
+      if (effectiveSummary) {
         const kpis = [
-          { label: "Total Risks", value: summary.total_risks ?? 0, color: [14, 165, 233] },
-          { label: "Critical", value: summary.critical_count ?? 0, color: [248, 113, 113] },
-          { label: "High Risk", value: summary.high_count ?? 0, color: [251, 146, 60] },
-          { label: "Mitigating", value: summary.under_mitigation_count ?? 0, color: [250, 204, 21] },
-          { label: "Resolved", value: summary.resolved_count ?? 0, color: [74, 222, 128] },
+          { label: "Total Risks", value: effectiveSummary.total_risks ?? 0, color: [14, 165, 233] },
+          { label: "Critical", value: effectiveSummary.critical_count ?? 0, color: [248, 113, 113] },
+          { label: "High Risk", value: effectiveSummary.high_count ?? 0, color: [251, 146, 60] },
+          { label: "Mitigating", value: effectiveSummary.under_mitigation_count ?? 0, color: [250, 204, 21] },
+          { label: "Resolved", value: effectiveSummary.resolved_count ?? 0, color: [74, 222, 128] },
         ];
 
         const boxW = (pageW - 40 - 12) / 5;
@@ -150,11 +158,12 @@ export default function ReportGenerator({ open, onClose, summary, deptData = [],
         if (r.risk_rating in risksByRating) risksByRating[r.risk_rating]++;
       });
 
+      const maxRatingCount = Math.max(...Object.values(risksByRating), 1);
       Object.entries(risksByRating).forEach(([rating, count]) => {
         if (count === 0) return;
         const col = RATING_COLORS[rating] || [100, 116, 139];
         doc.setFillColor(col[0], col[1], col[2]);
-        const barW = Math.max(2, (count / Math.max(...Object.values(risksByRating))) * 100);
+        const barW = Math.max(2, (count / maxRatingCount) * 100);
         doc.roundedRect(20, y, barW, 5, 1, 1, "F");
         doc.setTextColor(60, 60, 60);
         doc.setFontSize(8);
@@ -267,42 +276,47 @@ export default function ReportGenerator({ open, onClose, summary, deptData = [],
         addPageFooter(doc, pageNum, pageW, pageH);
       }
 
-      // ── PAGE 5: Critical & High Risk Register ─────────────────────────────
-      const criticalHighRisks = (risks.length ? risks : recentRisks).filter(
-        (r) => r.risk_rating === "Critical" || r.risk_rating === "High"
-      );
-      if (criticalHighRisks.length > 0) {
+      // ── PAGE 5: Detailed Risk Register ─────────────────────────────────────
+      const targetRisks = risks.length ? risks : recentRisks;
+      if (targetRisks.length > 0) {
         doc.addPage();
         pageNum++;
         doc.setFillColor(248, 250, 252);
         doc.rect(0, 0, pageW, pageH, "F");
-        addPageHeader(doc, "Critical & High Risk Register", pageW);
+        const registerTitle = risks.length ? "Detailed Risk Register" : "Critical & High Risk Register";
+        addPageHeader(doc, registerTitle, pageW);
         y = 36;
 
         const rCols = [
           { label: "Code", w: 22 }, { label: "Description", w: 75 }, { label: "Score", w: 16 },
           { label: "Rating", w: 22 }, { label: "Owner", w: 30 }, { label: "Status", w: 30 },
         ];
-        x = 20;
-        doc.setFillColor(241, 245, 249);
-        doc.rect(18, y - 4, pageW - 36, 10, "F");
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(71, 85, 105);
-        rCols.forEach((c) => { doc.text(c.label, x, y + 2); x += c.w; });
-        y += 10;
+
+        const renderTableHeader = () => {
+          let x = 20;
+          doc.setFillColor(241, 245, 249);
+          doc.rect(18, y - 4, pageW - 36, 10, "F");
+          doc.setFontSize(7);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(71, 85, 105);
+          rCols.forEach((c) => { doc.text(c.label, x, y + 2); x += c.w; });
+          y += 10;
+        };
+
+        renderTableHeader();
 
         doc.setFont("helvetica", "normal");
-        criticalHighRisks.slice(0, 25).forEach((r, i) => {
-          if (y > pageH - 20) {
+        targetRisks.forEach((r, i) => {
+          if (y > pageH - 25) {
             addPageFooter(doc, pageNum, pageW, pageH);
             doc.addPage(); pageNum++;
             doc.setFillColor(248, 250, 252); doc.rect(0, 0, pageW, pageH, "F");
-            addPageHeader(doc, "Critical & High Risk Register (cont.)", pageW);
+            addPageHeader(doc, `${registerTitle} (cont.)`, pageW);
             y = 36;
+            renderTableHeader();
           }
           if (i % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(18, y - 4, pageW - 36, 10, "F"); }
-          x = 20;
+          let x = 20;
           const col = RATING_COLORS[r.risk_rating] || [100, 116, 139];
           doc.setTextColor(col[0], col[1], col[2]);
           doc.setFontSize(7);
@@ -310,7 +324,7 @@ export default function ReportGenerator({ open, onClose, summary, deptData = [],
           doc.setTextColor(30, 41, 59);
           const desc = (r.description || "").slice(0, 55) + ((r.description || "").length > 55 ? "…" : "");
           doc.text(desc, x, y + 2); x += rCols[1].w;
-          doc.text(String(r.risk_score ?? (r.likelihood * r.impact)), x, y + 2); x += rCols[2].w;
+          doc.text(String(r.risk_score ?? ((r.likelihood || 1) * (r.impact || 1))), x, y + 2); x += rCols[2].w;
           doc.setTextColor(col[0], col[1], col[2]);
           doc.text(r.risk_rating || "—", x, y + 2); x += rCols[3].w;
           doc.setTextColor(30, 41, 59);

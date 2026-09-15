@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, Trash2, Edit2, Eye, Search, ArrowLeft, Loader2 } from "lucide-react";
+import { ShieldAlert, Plus, Trash2, Edit2, Eye, Search, ArrowLeft, Loader2, FileText } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { getRisks, deleteRisk, getDepartments } from "../../services/api";
@@ -7,6 +7,7 @@ import StatusChanger from "../../components/risks/StatusChanger";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import ReportGenerator from "../../components/reports/ReportGenerator";
 
 const RATING_VARIANT = {
   Critical: "critical",
@@ -25,6 +26,7 @@ export default function AdminRisks() {
   const [deptFilter, setDeptFilter] = useState(searchParams.get("dept") ?? "");
   const [ratingFilter, setRatingFilter] = useState("");
   const [deleting, setDeleting] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
   const PAGE_SIZE = 100;
 
   useEffect(() => {
@@ -107,12 +109,22 @@ export default function AdminRisks() {
             {total} risks{activeDept ? ` in ${activeDept.name}` : " across all departments"}
           </p>
         </div>
-        <Button className="gap-2 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/20" asChild>
-          <Link to="/admin/risks/new">
-            <Plus className="w-4 h-4" />
-            Log Risk
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2 border-slate-200 text-slate-700 hover:bg-slate-100"
+            onClick={() => setReportOpen(true)}
+          >
+            <FileText className="w-4 h-4 text-[#064E3B]" />
+            Export PDF
+          </Button>
+          <Button className="gap-2 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/20" asChild>
+            <Link to="/admin/risks/new">
+              <Plus className="w-4 h-4" />
+              Log Risk
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -231,6 +243,13 @@ export default function AdminRisks() {
           </div>
         )}
       </div>
+
+      <ReportGenerator
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        risks={risks}
+        deptTitle={activeDept ? activeDept.name : "All Departments"}
+      />
     </div>
   );
 }

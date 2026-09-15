@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, Trash2, Edit2, Eye, Search, Loader2 } from "lucide-react";
+import { ShieldAlert, Plus, Trash2, Edit2, Eye, Search, Loader2, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { getRisks, deleteRisk } from "../../services/api";
@@ -8,6 +8,7 @@ import StatusChanger from "../../components/risks/StatusChanger";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import ReportGenerator from "../../components/reports/ReportGenerator";
 
 const RATING_VARIANT = {
   Critical: "critical",
@@ -25,6 +26,7 @@ export default function StaffRisks() {
   const [ratingFilter, setRatingFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [deleting, setDeleting] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -73,12 +75,22 @@ export default function StaffRisks() {
           </div>
           <p className="text-sm text-slate-400">{total} risks · {user?.department_name}</p>
         </div>
-        <Button className="gap-2" asChild>
-          <Link to="/staff/risks/new">
-            <Plus className="w-4 h-4" />
-            Report Risk
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2 border-slate-200 text-slate-700 hover:bg-slate-100"
+            onClick={() => setReportOpen(true)}
+          >
+            <FileText className="w-4 h-4 text-[#064E3B]" />
+            Export PDF
+          </Button>
+          <Button className="gap-2" asChild>
+            <Link to="/staff/risks/new">
+              <Plus className="w-4 h-4" />
+              Report Risk
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -192,6 +204,13 @@ export default function StaffRisks() {
           </div>
         )}
       </div>
+
+      <ReportGenerator
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        risks={risks}
+        deptTitle={user?.department_name || "My Department"}
+      />
     </div>
   );
 }
