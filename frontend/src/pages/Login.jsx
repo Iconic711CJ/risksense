@@ -47,11 +47,11 @@ export default function Login() {
             <div className="w-9 h-9 flex items-center justify-center" style={{ background: "#57707A" }}>
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <span className="font-black text-lg tracking-widest uppercase" style={{ color: "#DEDCDC" }}>ERIMP</span>
+            <span className="font-black text-lg tracking-widest uppercase" style={{ color: "#DEDCDC" }}>Risksense</span>
           </div>
 
           <h1 className="text-4xl font-black leading-tight tracking-tight mb-4" style={{ color: "#DEDCDC" }}>
-            Enterprise Risk<br />Intelligence &<br />Mitigation Platform
+            Risksense<br />Risk Management<br />Platform
           </h1>
           <p className="text-sm leading-relaxed" style={{ color: "#7E919F" }}>
             Centralised risk management for Zambia. Monitor, assess, and mitigate risks across all departments.
@@ -98,7 +98,7 @@ export default function Login() {
             <div className="w-8 h-8 flex items-center justify-center" style={{ background: "#57707A" }}>
               <ShieldCheck className="w-4 h-4 text-white" />
             </div>
-            <span className="font-black tracking-widest uppercase" style={{ color: "#DEDCDC" }}>ERIMP</span>
+            <span className="font-black tracking-widest uppercase" style={{ color: "#DEDCDC" }}>Risksense</span>
           </div>
 
           <div className="mb-8">
@@ -165,7 +165,7 @@ export default function Login() {
           </form>
 
           <p className="text-center text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold mt-10">
-            ERIMP · {new Date().getFullYear()}
+            Risksense · {new Date().getFullYear()}
           </p>
         </div>
       </div>

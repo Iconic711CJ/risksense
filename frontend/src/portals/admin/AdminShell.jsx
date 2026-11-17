@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Users, ShieldAlert, ClipboardList,
-  ShieldCheck, LogOut, Menu, X, Building2, Plus
+  ShieldCheck, LogOut, Menu, X, Building2, Plus, FileUp
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
@@ -12,6 +12,7 @@ const NAV = [
   { to: "/admin",             icon: LayoutDashboard, label: "Dashboard",        end: true },
   { to: "/admin/staff",       icon: Users,           label: "Staff Management"            },
   { to: "/admin/risks",       icon: ShieldAlert,     label: "Risk Register"               },
+  { to: "/admin/import-export",icon: FileUp,          label: "Import / Export"             },
   { to: "/admin/departments", icon: Building2,       label: "Departments"                 },
   { to: "/admin/audit",       icon: ClipboardList,   label: "Audit Trail"                 },
 ];
@@ -47,7 +48,7 @@ export default function AdminShell() {
               <ShieldCheck className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <p className="text-sm font-black uppercase tracking-widest" style={{ color: "#DEDCDC" }}>ERIMP</p>
+              <p className="text-sm font-black uppercase tracking-widest" style={{ color: "#DEDCDC" }}>RiskSense</p>
               <p className="text-[9px] font-bold uppercase tracking-[0.15em]" style={{ color: "#57707A" }}>Admin Portal</p>
             </div>
           </div>
@@ -134,7 +135,7 @@ export default function AdminShell() {
             Organisation Control Panel
           </span>
           <span className="text-[10px] font-bold uppercase tracking-widest hidden md:block" style={{ color: "#C5BAC4" }}>
-            ERIMP · NIPA Zambia
+            RiskSense · Management Portal
           </span>
         </header>
 

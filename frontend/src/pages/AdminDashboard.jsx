@@ -98,7 +98,7 @@ export default function AdminDashboard() {
             Risk Intelligence
           </h1>
           <p className="text-sm font-medium text-primary mt-1">
-            Global Enterprise Overview · NIPA Zambia
+            Global Enterprise Overview
           </p>
         </div>
         <div className="flex items-center gap-3">

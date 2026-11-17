@@ -45,7 +45,7 @@ const useAppStore = create(
       },
     }),
     {
-      name: "erimp-auth",
+      name: "risksense-auth",
       // Only persist auth fields — never cache sensitive business data
       partialize: (state) => ({
         user: state.user,

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../co
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
-    orgName: "NIPA",
+    orgName: "RiskSense Organization",
     defaultRiskType: "Operational Risk"
   });
 

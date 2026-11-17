@@ -5,6 +5,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, field_validator
 from typing import Optional, List, Dict, Any
 import os
+import io
+import time
 import json
 import pandas as pd
 from datetime import datetime, timedelta, timezone
@@ -36,7 +38,7 @@ supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 TOKEN_CACHE_TTL = 60  # seconds
 _token_cache: dict[str, tuple[object, float]] = {}  # token → (AuthUser, expires_at)
 
-app = FastAPI(title="ERIMP API — Enterprise Risk Intelligence & Mitigation Platform")
+app = FastAPI(title="RiskSense API — Risk Management Platform")
 
 app.add_middleware(
     CORSMiddleware,
@@ -325,6 +327,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     role: Optional[str] = None
     department_id: Optional[str] = None
+    status: Optional[str] = None
 
     @field_validator("role")
     @classmethod
@@ -332,6 +335,18 @@ class UserUpdate(BaseModel):
         if v is not None and v not in {"super_admin", "admin", "department_user"}:
             raise ValueError("Role must be super_admin, admin, or department_user")
         return v
+
+
+class UserResetPassword(BaseModel):
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v):
+        if not v or len(v.strip()) < 6:
+            raise ValueError("Password must be at least 6 characters long")
+        return v.strip()
+
 
 
 class DepartmentCreate(BaseModel):
@@ -361,7 +376,7 @@ class AnalysisCreate(BaseModel):
 
 @app.get("/")
 def root():
-    return {"message": "ERIMP API", "version": "2.0"}
+    return {"message": "RiskSense API", "version": "2.0"}
 
 
 @app.get("/categories")
@@ -420,7 +435,7 @@ def login(data: LoginRequest):
     if not profile_res.data:
         print(f"[LOGIN] Step 2 FAILED – No profiles row for user_id={user_id}")
         print("[LOGIN] Hint: Run the SQL schema in Supabase to create the profiles table with the correct columns.")
-        raise HTTPException(400, "User profile not found. Ask your administrator to create your ERIMP profile.")
+        raise HTTPException(400, "User profile not found. Ask your administrator to create your RiskSense profile.")
 
     p = profile_res.data[0]
     dept = p.get("departments") or {}
@@ -592,6 +607,89 @@ def delete_user(user_id: str, user: AuthUser = Depends(require_admin)):
         return {"deleted": True}
     except Exception as e:
         raise HTTPException(400, f"Failed to delete user: {str(e)}")
+
+
+@app.post("/users/{user_id}/reset-password")
+def reset_user_password(user_id: str, data: UserResetPassword, user: AuthUser = Depends(require_super_admin)):
+    profile_res = supabase_admin.table("profiles").select("id, email, full_name").eq("id", user_id).limit(1).execute()
+    if not profile_res.data:
+        raise HTTPException(404, "User not found")
+    target_user = profile_res.data[0]
+    
+    try:
+        supabase_admin.auth.admin.update_user_by_id(user_id, {"password": data.password})
+        log_audit(user, "RESET_PASSWORD", "profiles", user_id, new_value={"email": target_user.get("email")})
+        return {"message": "Password reset successfully", "user_id": user_id}
+    except Exception as e:
+        raise HTTPException(400, f"Failed to reset password: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# System & Governance
+# ---------------------------------------------------------------------------
+
+@app.get("/system/health")
+def get_system_health(user: AuthUser = Depends(require_super_admin)):
+    import time
+    start_time = time.time()
+    db_status = "OK"
+    auth_status = "OK"
+    errors = []
+
+    try:
+        supabase_admin.table("profiles").select("id").limit(1).execute()
+    except Exception as e:
+        db_status = "ERROR"
+        errors.append(f"Database: {str(e)}")
+
+    try:
+        supabase.auth.get_session()
+    except Exception as e:
+        auth_status = "DEGRADED"
+        errors.append(f"Auth: {str(e)}")
+
+    latency_ms = round((time.time() - start_time) * 1000, 2)
+    return {
+        "status": "HEALTHY" if db_status == "OK" and auth_status == "OK" else "DEGRADED",
+        "database": db_status,
+        "auth": auth_status,
+        "latency_ms": latency_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "errors": errors
+    }
+
+
+@app.get("/system/backup")
+def download_system_backup(user: AuthUser = Depends(require_super_admin)):
+    try:
+        profiles_res = supabase_admin.table("profiles").select("*").execute()
+        depts_res = supabase_admin.table("departments").select("*").execute()
+        risks_res = supabase_admin.table("risks").select("*").execute()
+        audit_res = supabase_admin.table("audit_log").select("*").order("created_at", desc=True).limit(500).execute()
+
+        backup_payload = {
+            "version": "2.0",
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_by": {"id": user.id, "email": user.email, "name": user.full_name},
+            "counts": {
+                "profiles": len(profiles_res.data or []),
+                "departments": len(depts_res.data or []),
+                "risks": len(risks_res.data or []),
+                "audit_logs": len(audit_res.data or []),
+            },
+            "data": {
+                "profiles": profiles_res.data or [],
+                "departments": depts_res.data or [],
+                "risks": risks_res.data or [],
+                "audit_log": audit_res.data or [],
+            }
+        }
+        log_audit(user, "DOWNLOAD_SYSTEM_BACKUP", "system", record_id="backup")
+        return backup_payload
+    except Exception as e:
+        raise HTTPException(500, f"Failed to generate system backup: {str(e)}")
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -969,15 +1067,36 @@ def get_audit_log(
 
 @app.get("/analyses")
 def list_analyses(user: AuthUser = Depends(verify_token)):
-    q = supabase_admin.table("analyses").select("*")
-    if user.role == "department_user":
-        q = q.eq("created_by", user.id)
-    result = q.order("created_at", desc=True).execute()
-    analyses = result.data or []
+    # Resilient fetch with retry for analyses
+    analyses = []
+    for attempt in range(3):
+        try:
+            result = supabase_admin.table("analyses").select("*").order("created_at", desc=True).execute()
+            analyses = result.data or []
+            break
+        except Exception as e:
+            if attempt == 2:
+                print(f"[ANALYSES] Error listing analyses after 3 attempts: {e}")
+                return []
+            time.sleep(0.3)
+
+    if not analyses:
+        return []
+
+    # Batch count risk items per analysis to avoid N+1 queries
+    analysis_ids = [a["id"] for a in analyses]
+    counts = {aid: 0 for aid in analysis_ids}
+    try:
+        items_res = supabase_admin.table("risk_items").select("id, analysis_id").in_("analysis_id", analysis_ids).execute()
+        for item in (items_res.data or []):
+            aid = item.get("analysis_id")
+            if aid in counts:
+                counts[aid] += 1
+    except Exception as e:
+        print(f"[ANALYSES] Non-fatal error getting item counts: {e}")
 
     for a in analyses:
-        items_res = supabase_admin.table("risk_items").select("id").eq("analysis_id", a["id"]).execute()
-        a["item_count"] = len(items_res.data or [])
+        a["item_count"] = counts.get(a["id"], 0)
     return analyses
 
 
@@ -987,14 +1106,22 @@ def create_analysis(data: AnalysisCreate, user: AuthUser = Depends(verify_token)
         "name": data.name,
         "type": data.type or "Operational",
         "description": data.description,
-        "contact_person": data.contact_person or user.full_name,
+        "contact_person": data.contact_person or user.full_name or user.email,
         "created_by": user.id,
     }
-    res = supabase_admin.table("analyses").insert(row).execute()
-    if not res.data:
-        raise HTTPException(500, "Failed to create analysis")
-    log_audit(user, "CREATE_ANALYSIS", "analyses", res.data[0]["id"], new_value=row)
-    return res.data[0]
+    last_err = None
+    for attempt in range(3):
+        try:
+            res = supabase_admin.table("analyses").insert(row).execute()
+            if res.data and len(res.data) > 0:
+                log_audit(user, "CREATE_ANALYSIS", "analyses", res.data[0]["id"], new_value=row)
+                return res.data[0]
+        except Exception as e:
+            last_err = e
+            print(f"[CREATE_ANALYSIS] Attempt {attempt+1} failed: {e}")
+            time.sleep(0.4)
+
+    raise HTTPException(500, f"Failed to create analysis project: {str(last_err)}")
 
 
 @app.get("/analyses/{analysis_id}")

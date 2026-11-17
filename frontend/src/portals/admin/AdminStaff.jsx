@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Edit2, Loader2, Search, Users, ChevronDown, ChevronRight, UserPlus } from "lucide-react";
+import { Plus, Trash2, Edit2, Loader2, Search, Users, ChevronDown, ChevronRight, UserPlus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { getUsers, createUser, updateUser, deleteUser, getDepartments } from "../../services/api";
 import useAppStore from "../../store/useAppStore";
@@ -25,6 +25,7 @@ export default function AdminStaff() {
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [collapsedDepts, setCollapsedDepts] = useState({});
   const [form, setForm] = useState({ email: "", password: "", full_name: "", role: "department_user", department_id: "" });
   const [saving, setSaving] = useState(false);
@@ -111,11 +112,13 @@ export default function AdminStaff() {
     }
   }
 
-  async function handleDelete(id) {
-    setDeleting(id);
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(deleteTarget.id);
     try {
-      await deleteUser(id);
-      toast.success("User deleted");
+      await deleteUser(deleteTarget.id);
+      toast.success(`User ${deleteTarget.full_name} deleted`);
+      setDeleteTarget(null);
       load();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to delete user");
@@ -130,17 +133,22 @@ export default function AdminStaff() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Users className="w-5 h-5 text-[#064E3B]" />
-            <h1 className="text-xl font-black text-slate-900">Staff Management</h1>
+            <div className="w-8 h-8 rounded-lg bg-[#064E3B]/10 border border-[#064E3B]/20 flex items-center justify-center">
+              <Users className="w-4 h-4 text-[#064E3B]" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-800">Staff Accounts</h1>
           </div>
-          <p className="text-sm text-slate-400">{users.length} staff accounts · {departments.length} departments</p>
+          <p className="text-sm text-slate-500">Manage department staff credentials and assignments</p>
         </div>
         <Button
-          onClick={() => { setForm({ email: "", password: "", full_name: "", role: "department_user", department_id: "" }); setShowCreate(true); }}
-          className="gap-2"
+          onClick={() => {
+            setForm({ email: "", password: "", full_name: "", role: "department_user", department_id: "" });
+            setShowCreate(true);
+          }}
+          className="bg-[#064E3B] hover:bg-[#064E3B]/90 text-white gap-2 shadow-sm"
         >
           <UserPlus className="w-4 h-4" />
-          Add Staff
+          Create Staff Account
         </Button>
       </div>
 
@@ -148,53 +156,53 @@ export default function AdminStaff() {
       <div className="relative w-64">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
         <Input
-          className="pl-9"
+          className="pl-9 text-sm"
           placeholder="Search staff..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
+      {/* List by Department */}
       {loading ? (
-        <div className="flex items-center justify-center h-40">
+        <div className="flex items-center justify-center py-16">
           <Loader2 className="w-6 h-6 text-[#064E3B] animate-spin" />
         </div>
       ) : grouped.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <Users className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-          <p className="text-slate-400 text-sm">No staff accounts yet</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-slate-500 text-sm font-medium">No staff accounts found</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {grouped.map((group) => {
             const isCollapsed = collapsedDepts[group.id];
             return (
-              <div key={group.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div key={group.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                 <button
                   onClick={() => toggleDept(group.id)}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors"
+                  className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors border-b border-slate-100"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[9px] font-black text-[#064E3B]">{group.code}</span>
+                  <div className="flex items-center gap-2.5">
+                    {isCollapsed ? <ChevronRight className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                    <span className="font-semibold text-slate-800 text-sm">{group.name}</span>
+                    <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      {group.code}
+                    </span>
                   </div>
-                  <span className="font-bold text-slate-700 text-sm flex-1 text-left">{group.name}</span>
-                  <span className="text-xs font-bold text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-full mr-2">
-                    {group.users.length}
+                  <span className="text-xs text-slate-500 font-medium">
+                    {group.users.length} {group.users.length === 1 ? "staff" : "staff members"}
                   </span>
-                  {isCollapsed
-                    ? <ChevronRight className="w-4 h-4 text-slate-400" />
-                    : <ChevronDown className="w-4 h-4 text-slate-400" />
-                  }
                 </button>
 
                 {!isCollapsed && (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-slate-50">
-                          <th className="text-left px-5 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Name</th>
-                          <th className="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</th>
-                          <th className="text-right px-5 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
+                        <tr className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                          <th className="text-left px-5 py-2.5">Name</th>
+                          <th className="text-left px-4 py-2.5">Email</th>
+                          <th className="text-right px-5 py-2.5">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -227,14 +235,12 @@ export default function AdminStaff() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleDelete(u.id)}
+                                  title="Delete Account"
+                                  onClick={() => setDeleteTarget(u)}
                                   disabled={deleting === u.id}
                                   className="w-7 h-7 text-slate-400 hover:text-red-500 hover:bg-red-50"
                                 >
-                                  {deleting === u.id
-                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    : <Trash2 className="w-3.5 h-3.5" />
-                                  }
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
                               </div>
                             </td>
@@ -256,16 +262,16 @@ export default function AdminStaff() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-[#064E3B]" />
-              Add Staff Account
+              Create Staff Account
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate}>
             <div className="px-6 pb-2 space-y-4">
               <Field label="Full Name">
-                <Input placeholder="Jane Doe" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+                <Input placeholder="Jane Smith" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
               </Field>
               <Field label="Email">
-                <Input type="email" placeholder="jane@nipa.ac.zm" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <Input type="email" placeholder="staff@nipa.ac.zm" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </Field>
               <Field label="Password">
                 <Input type="password" placeholder="Min 8 characters" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
@@ -323,6 +329,43 @@ export default function AdminStaff() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              Confirm Staff Deletion
+            </DialogTitle>
+          </DialogHeader>
+          {deleteTarget && (
+            <div className="space-y-4 pt-2">
+              <p className="text-sm text-slate-600">
+                Are you sure you want to delete staff account for <strong className="text-slate-800">{deleteTarget.full_name}</strong> (<span className="font-mono text-slate-500">{deleteTarget.email}</span>)?
+              </p>
+              <div className="p-3 rounded-lg bg-red-50 border border-red-100 text-xs text-red-700">
+                This action is permanent and cannot be undone.
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={deleting === deleteTarget.id}
+                  onClick={handleConfirmDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {deleting === deleteTarget.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Account"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

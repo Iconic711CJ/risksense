@@ -3,23 +3,26 @@ import { ClipboardList, ChevronLeft, ChevronRight, RefreshCw, Calendar, Globe } 
 import { getAuditLog } from "../../services/api";
 
 const ACTION_STYLE = {
-  LOGIN:               { background: "#1e2a35", color: "#94a3b8", border: "1px solid #334155" },
-  CREATE_RISK:         { background: "#064e3b", color: "#6ee7b7", border: "1px solid #047857" },
-  UPDATE_RISK:         { background: "#1e3a5f", color: "#93c5fd", border: "1px solid #1d4ed8" },
-  UPDATE_STATUS:       { background: "#2e1065", color: "#c4b5fd", border: "1px solid #7c3aed" },
-  DELETE_RISK:         { background: "#450a0a", color: "#fca5a5", border: "1px solid #991b1b" },
-  CREATE_USER:         { background: "#1e1b4b", color: "#a5b4fc", border: "1px solid #4338ca" },
-  UPDATE_USER:         { background: "#083344", color: "#67e8f9", border: "1px solid #0e7490" },
-  DELETE_USER:         { background: "#4c0519", color: "#fda4af", border: "1px solid #be123c" },
-  CREATE_DEPARTMENT:   { background: "#134e4a", color: "#5eead4", border: "1px solid #0f766e" },
-  UPDATE_DEPARTMENT:   { background: "#0c4a6e", color: "#7dd3fc", border: "1px solid #0369a1" },
-  DELETE_DEPARTMENT:   { background: "#431407", color: "#fdba74", border: "1px solid #c2410c" },
+  LOGIN:                  { background: "#1e2a35", color: "#94a3b8", border: "1px solid #334155" },
+  CREATE_RISK:            { background: "#064e3b", color: "#6ee7b7", border: "1px solid #047857" },
+  UPDATE_RISK:            { background: "#1e3a5f", color: "#93c5fd", border: "1px solid #1d4ed8" },
+  UPDATE_STATUS:          { background: "#2e1065", color: "#c4b5fd", border: "1px solid #7c3aed" },
+  DELETE_RISK:            { background: "#450a0a", color: "#fca5a5", border: "1px solid #991b1b" },
+  CREATE_USER:            { background: "#1e1b4b", color: "#a5b4fc", border: "1px solid #4338ca" },
+  UPDATE_USER:            { background: "#083344", color: "#67e8f9", border: "1px solid #0e7490" },
+  RESET_PASSWORD:         { background: "#78350f", color: "#fde68a", border: "1px solid #d97706" },
+  DELETE_USER:            { background: "#4c0519", color: "#fda4af", border: "1px solid #be123c" },
+  CREATE_DEPARTMENT:      { background: "#134e4a", color: "#5eead4", border: "1px solid #0f766e" },
+  UPDATE_DEPARTMENT:      { background: "#0c4a6e", color: "#7dd3fc", border: "1px solid #0369a1" },
+  DELETE_DEPARTMENT:      { background: "#431407", color: "#fdba74", border: "1px solid #c2410c" },
+  DOWNLOAD_SYSTEM_BACKUP: { background: "#065f46", color: "#a7f3d0", border: "1px solid #059669" },
 };
 
 const ACTION_GROUPS = {
   "Risk Events":       ["CREATE_RISK", "UPDATE_RISK", "UPDATE_STATUS", "DELETE_RISK"],
-  "User Events":       ["CREATE_USER", "UPDATE_USER", "DELETE_USER", "LOGIN"],
+  "User Events":       ["CREATE_USER", "UPDATE_USER", "RESET_PASSWORD", "DELETE_USER", "LOGIN"],
   "Department Events": ["CREATE_DEPARTMENT", "UPDATE_DEPARTMENT", "DELETE_DEPARTMENT"],
+  "System Events":     ["DOWNLOAD_SYSTEM_BACKUP"],
 };
 
 const PAGE_SIZE = 25;

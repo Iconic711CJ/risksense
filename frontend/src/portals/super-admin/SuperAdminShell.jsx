@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Users, Building2, ClipboardList,
-  ShieldCheck, LogOut, Menu, X, Crown
+  ShieldCheck, LogOut, Menu, X, Crown, Settings
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
@@ -13,6 +13,7 @@ const NAV = [
   { to: "/super-admin/users",       icon: Users,           label: "User Management"           },
   { to: "/super-admin/departments", icon: Building2,       label: "Departments"               },
   { to: "/super-admin/audit",       icon: ClipboardList,   label: "Audit Trail"               },
+  { to: "/super-admin/settings",    icon: Settings,        label: "Settings & Backup"         },
 ];
 
 export default function SuperAdminShell() {
@@ -46,7 +47,7 @@ export default function SuperAdminShell() {
               <Crown className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <p className="text-sm font-black uppercase tracking-widest" style={{ color: "#DEDCDC" }}>ERIMP</p>
+              <p className="text-sm font-black uppercase tracking-widest" style={{ color: "#DEDCDC" }}>RiskSense</p>
               <p className="text-[9px] font-bold uppercase tracking-[0.15em]" style={{ color: "#57707A" }}>Super Admin</p>
             </div>
           </div>
@@ -117,7 +118,7 @@ export default function SuperAdminShell() {
             Platform Control Centre
           </span>
           <span className="text-[10px] font-bold uppercase tracking-widest hidden md:block" style={{ color: "#2a333d" }}>
-            ERIMP · NIPA Zambia
+            RiskSense · Enterprise Portal
           </span>
         </header>
 

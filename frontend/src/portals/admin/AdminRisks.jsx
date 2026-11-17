@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, Trash2, Edit2, Eye, Search, ArrowLeft, Loader2, FileText } from "lucide-react";
+import { ShieldAlert, Plus, Trash2, Edit2, Eye, Search, ArrowLeft, Loader2, FileText, FileUp } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { getRisks, deleteRisk, getDepartments } from "../../services/api";
@@ -117,6 +117,16 @@ export default function AdminRisks() {
           >
             <FileText className="w-4 h-4 text-[#064E3B]" />
             Export PDF
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2 border-slate-200 text-slate-700 hover:bg-slate-100"
+            asChild
+          >
+            <Link to="/admin/import-export">
+              <FileUp className="w-4 h-4 text-[#064E3B]" />
+              Import / Export
+            </Link>
           </Button>
           <Button className="gap-2 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/20" asChild>
             <Link to="/admin/risks/new">

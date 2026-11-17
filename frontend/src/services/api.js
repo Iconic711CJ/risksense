@@ -118,6 +118,10 @@ export const updateUser = (id, data) =>
 export const deleteUser = (id) =>
   api.delete(`/users/${id}`).then((r) => r.data);
 
+export const resetUserPassword = (userId, password) =>
+  api.post(`/users/${userId}/reset-password`, { password }).then((r) => r.data);
+
+
 // ── Risks ─────────────────────────────────────────────────────────────────────
 export const getRisks = (params = {}) =>
   api.get("/risks", { params }).then((r) => r.data);
@@ -164,4 +168,12 @@ export const getAuditLog = (params = {}) =>
 export const getCategories = () =>
   api.get("/categories").then((r) => r.data);
 
+// ── System & Governance ───────────────────────────────────────────────────────
+export const getSystemHealth = () =>
+  api.get("/system/health").then((r) => r.data);
+
+export const downloadSystemBackup = () =>
+  api.get("/system/backup").then((r) => r.data);
+
 export default api;
+

@@ -17,7 +17,7 @@ function getTitle(pathname) {
   if (pathname.startsWith("/departments/") && pathname.endsWith("/kanban")) return "Kanban Board";
   if (pathname.startsWith("/departments/")) return "Department Register";
   if (pathname.includes("/edit")) return "Edit Risk";
-  return ROUTE_TITLES[pathname] || "ERIMP";
+  return ROUTE_TITLES[pathname] || "RiskSense";
 }
 
 export default function Topbar() {

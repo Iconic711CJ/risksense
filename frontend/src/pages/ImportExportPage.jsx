@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { getAnalyses, uploadFile, exportAnalysis, importRisksDirect, downloadTemplate, getDepartments } from "../services/api";
+import { getAnalyses, createAnalysis, deleteAnalysis, uploadFile, exportAnalysis, importRisksDirect, downloadTemplate, getDepartments } from "../services/api";
 import useAppStore from "../store/useAppStore";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Upload, Download, FileText, CheckCircle2, AlertCircle, Loader2, FileUp, X, FileSpreadsheet, Building2 } from "lucide-react";
+import { Upload, Download, FileText, CheckCircle2, AlertCircle, Loader2, FileUp, X, FileSpreadsheet, Building2, PlusCircle, Trash2, RefreshCw } from "lucide-react";
 import ImportMappingModal from "../components/ImportMappingModal";
 import { cn } from "../lib/utils";
 
@@ -14,6 +13,7 @@ export default function ImportExportPage() {
   const isAdmin = ["admin", "super_admin"].includes(user?.role);
 
   const [analyses, setAnalyses] = useState([]);
+  const [loadingAnalyses, setLoadingAnalyses] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [targetType, setTargetType] = useState("direct"); // "direct" or "analysis"
   const [selectedAnalysisId, setSelectedAnalysisId] = useState("");
@@ -29,12 +29,73 @@ export default function ImportExportPage() {
   const [pendingUploadFile, setPendingUploadFile] = useState(null);
   const fileInputRef = useRef(null);
 
+  // Create analysis form
+  const [newAnalysisName, setNewAnalysisName] = useState("");
+  const [newAnalysisType, setNewAnalysisType] = useState("Operational");
+  const [newAnalysisDesc, setNewAnalysisDesc] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const loadAnalyses = async () => {
+    setLoadingAnalyses(true);
+    try {
+      const data = await getAnalyses();
+      setAnalyses(data || []);
+    } catch (err) {
+      console.error("Failed to load analyses:", err);
+      toast.error("Could not load analysis projects. Please check connection.");
+    } finally {
+      setLoadingAnalyses(false);
+    }
+  };
+
   useEffect(() => {
-    getAnalyses().then(setAnalyses).catch(() => {});
+    loadAnalyses();
     if (isAdmin) {
       getDepartments().then(setDepartments).catch(() => {});
     }
-  }, [isAdmin]);
+  }, [isAdmin]); // eslint-disable-line
+
+  const handleCreateAnalysis = async (e) => {
+    e.preventDefault();
+    if (!newAnalysisName.trim()) return;
+    setCreating(true);
+    try {
+      const created = await createAnalysis({
+        name: newAnalysisName.trim(),
+        type: newAnalysisType,
+        description: newAnalysisDesc.trim() || undefined,
+      });
+      toast.success(`Analysis "${created.name}" created`);
+      setNewAnalysisName("");
+      setNewAnalysisDesc("");
+      await loadAnalyses();
+      setSelectedAnalysisId(created.id);
+    } catch (err) {
+      console.error("Create analysis error:", err);
+      const msg = err?.response?.data?.detail || err?.message || "Failed to create analysis project";
+      toast.error(msg);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDeleteAnalysis = async (id, name) => {
+    if (!window.confirm(`Delete analysis "${name}"? This cannot be undone.`)) return;
+    setDeletingId(id);
+    try {
+      await deleteAnalysis(id);
+      toast.success("Analysis deleted");
+      if (selectedAnalysisId === id) setSelectedAnalysisId("");
+      await loadAnalyses();
+    } catch (err) {
+      console.error("Delete analysis error:", err);
+      const msg = err?.response?.data?.detail || err?.message || "Failed to delete analysis";
+      toast.error(msg);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -136,7 +197,7 @@ export default function ImportExportPage() {
       <div>
         <h1 className="font-display text-2xl font-bold text-foreground">Import & Export Center</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Download official ERIMP templates or upload populated Excel/CSV risk registers
+          Download official RiskSense templates or upload populated Excel/CSV risk registers
         </p>
       </div>
 
@@ -147,7 +208,7 @@ export default function ImportExportPage() {
             <FileSpreadsheet className="w-5 h-5 text-primary" /> Official Risk Register Templates
           </CardTitle>
           <CardDescription>
-            Download pre-formatted templates designed for direct import into ERIMP.
+            Download pre-formatted templates designed for direct import into RiskSense.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -198,6 +259,103 @@ export default function ImportExportPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Create / Manage Analysis Projects */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <PlusCircle className="w-5 h-5 text-primary" /> Analysis Projects
+                </CardTitle>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                  {analyses.length} {analyses.length === 1 ? "project" : "projects"}
+                </span>
+              </div>
+              <CardDescription>
+                Create an analysis project to organise and export a set of risk items.
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadAnalyses}
+              disabled={loadingAnalyses}
+              className="text-xs gap-1.5 h-8"
+              title="Refresh analysis list"
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", loadingAnalyses && "animate-spin")} />
+              {loadingAnalyses ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleCreateAnalysis} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-xs font-medium text-foreground">Project Name *</label>
+              <input
+                required
+                value={newAnalysisName}
+                onChange={(e) => setNewAnalysisName(e.target.value)}
+                placeholder="e.g. Q3 2026 Operational Review"
+                className="w-full h-9 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Type</label>
+              <select
+                value={newAnalysisType}
+                onChange={(e) => setNewAnalysisType(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                {["Operational", "Strategic", "Financial", "Compliance", "Project"].map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <Button type="submit" disabled={creating} className="h-9 font-bold gap-1.5">
+              {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PlusCircle className="w-3.5 h-3.5" />}
+              Create
+            </Button>
+          </form>
+
+          {analyses.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4 border border-dashed border-border rounded-xl">
+              No analysis projects yet. Create one above to get started.
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {analyses.map((a) => (
+                <div
+                  key={a.id}
+                  className={cn(
+                    "flex items-center justify-between px-3 py-2 rounded-lg border cursor-pointer transition-all text-xs",
+                    selectedAnalysisId === a.id
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-primary/40 text-foreground"
+                  )}
+                  onClick={() => setSelectedAnalysisId(a.id)}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileSpreadsheet className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                    <span className="font-semibold truncate">{a.name}</span>
+                    <span className="text-muted-foreground shrink-0">· {a.type}</span>
+                    <span className="text-muted-foreground shrink-0">· {a.item_count ?? 0} items</span>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteAnalysis(a.id, a.name); }}
+                    disabled={deletingId === a.id}
+                    className="ml-2 p-1 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors shrink-0"
+                  >
+                    {deletingId === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -264,15 +422,28 @@ export default function ImportExportPage() {
 
             {targetType === "analysis" && (
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">Target Analysis Project</label>
-                <Select value={selectedAnalysisId} onValueChange={setSelectedAnalysisId}>
-                  <SelectTrigger><SelectValue placeholder="Select an analysis project..." /></SelectTrigger>
-                  <SelectContent>
-                    {analyses.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-foreground">Target Analysis Project</label>
+                  {analyses.length > 0 && (
+                    <span className="text-[11px] text-muted-foreground">{analyses.length} available</span>
+                  )}
+                </div>
+                <select
+                  value={selectedAnalysisId}
+                  onChange={(e) => setSelectedAnalysisId(e.target.value)}
+                  className="w-full h-9 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                >
+                  <option value="">
+                    {analyses.length === 0
+                      ? "No analysis projects yet — create one above first"
+                      : "-- Select an analysis project --"}
+                  </option>
+                  {analyses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.type}) — {a.item_count ?? 0} items
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
@@ -357,15 +528,28 @@ export default function ImportExportPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Select Analysis</label>
-              <Select value={selectedAnalysisId} onValueChange={setSelectedAnalysisId}>
-                <SelectTrigger><SelectValue placeholder="Select an analysis..." /></SelectTrigger>
-                <SelectContent>
-                  {analyses.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-foreground">Select Analysis</label>
+                {analyses.length > 0 && (
+                  <span className="text-[11px] text-muted-foreground">{analyses.length} available</span>
+                )}
+              </div>
+              <select
+                value={selectedAnalysisId}
+                onChange={(e) => setSelectedAnalysisId(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+              >
+                <option value="">
+                  {analyses.length === 0
+                    ? "No analysis projects available — create one above first"
+                    : "-- Select an analysis project to export --"}
+                </option>
+                {analyses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.type}) — {a.item_count ?? 0} items
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="glass rounded-xl p-4 space-y-3">

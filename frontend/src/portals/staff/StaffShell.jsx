@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import {
   LayoutDashboard, ShieldAlert, KanbanSquare,
-  ShieldCheck, LogOut, Menu, X, Plus, BarChart2
+  ShieldCheck, LogOut, Menu, X, Plus, BarChart2, FileUp
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 const NAV = [
   { to: "/staff",            icon: LayoutDashboard, label: "My Dashboard", end: true },
   { to: "/staff/risks",      icon: ShieldAlert,     label: "Risk Register"           },
+  { to: "/staff/import-export",icon: FileUp,          label: "Import / Export"         },
   { to: "/staff/kanban",     icon: KanbanSquare,    label: "Kanban Board"            },
   { to: "/staff/analytics",  icon: BarChart2,       label: "Analytics"               },
 ];
@@ -46,7 +47,7 @@ export default function StaffShell() {
               <ShieldCheck className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <p className="text-sm font-black uppercase tracking-widest" style={{ color: "#DEDCDC" }}>ERIMP</p>
+              <p className="text-sm font-black uppercase tracking-widest" style={{ color: "#DEDCDC" }}>RiskSense</p>
               <p className="text-[9px] font-bold uppercase tracking-[0.15em]" style={{ color: "#57707A" }}>Staff Portal</p>
             </div>
           </div>
@@ -130,7 +131,7 @@ export default function StaffShell() {
           </button>
           <ShieldCheck className="w-4 h-4 shrink-0" style={{ color: "#57707A" }} />
           <span className="text-xs font-bold uppercase tracking-[0.15em] flex-1" style={{ color: "#979DAB" }}>
-            {user?.department_name ? `${user.department_name} · ERIMP` : "ERIMP Staff Portal"}
+            {user?.department_name ? `${user.department_name} · RiskSense` : "RiskSense Staff Portal"}
           </span>
         </header>
 

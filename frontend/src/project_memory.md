@@ -1,7 +1,7 @@
 # RiskSense Dashboard - Project Memory
 
 ## Overview
-RiskSense (ERIMP) is an Enterprise Risk Intelligence & Mitigation Platform for NIPA Zambia. It provides a centralized dashboard for risk monitoring, department-level registers, and executive reporting.
+RiskSense is a Risk Management Platform for NIPA Zambia. It provides a centralized dashboard for risk monitoring, department-level registers, and executive reporting.
 
 ## Tech Stack
 ### Frontend

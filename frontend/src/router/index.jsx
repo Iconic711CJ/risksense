@@ -11,6 +11,7 @@ const SADashboard       = lazy(() => import("../portals/super-admin/SADashboard"
 const SAUsers           = lazy(() => import("../portals/super-admin/SAUsers"));
 const SADepartments     = lazy(() => import("../portals/super-admin/SADepartments"));
 const SAAudit           = lazy(() => import("../portals/super-admin/SAAudit"));
+const SASettings        = lazy(() => import("../portals/super-admin/SASettings"));
 
 // Admin portal
 const AdminShell        = lazy(() => import("../portals/admin/AdminShell"));
@@ -29,6 +30,9 @@ const StaffRisks        = lazy(() => import("../portals/staff/StaffRisks"));
 const StaffKanban       = lazy(() => import("../portals/staff/StaffKanban"));
 const StaffAddRisk      = lazy(() => import("../portals/staff/StaffAddRisk"));
 const StaffAnalytics    = lazy(() => import("../portals/staff/StaffAnalytics"));
+
+// Shared pages
+const ImportExportPage  = lazy(() => import("../pages/ImportExportPage"));
 
 // ── Loading fallback ──────────────────────────────────────────────────────────
 function PageLoader() {
@@ -120,6 +124,8 @@ const router = createBrowserRouter([
       { path: "users", element: <Wrap><SAUsers /></Wrap> },
       { path: "departments", element: <Wrap><SADepartments /></Wrap> },
       { path: "audit", element: <Wrap><SAAudit /></Wrap> },
+      { path: "settings", element: <Wrap><SASettings /></Wrap> },
+      { path: "risks/:id", element: <Wrap><RiskDetailPage backPath="/super-admin" editPath="/admin/risks" /></Wrap> },
     ],
   },
 
@@ -136,6 +142,7 @@ const router = createBrowserRouter([
       { path: "risks/:id/edit", element: <Wrap><AdminAddRisk /></Wrap> },
       { path: "departments", element: <Wrap><AdminDepts /></Wrap> },
       { path: "audit", element: <Wrap><AdminAudit /></Wrap> },
+      { path: "import-export", element: <Wrap><ImportExportPage /></Wrap> },
     ],
   },
 
@@ -151,6 +158,7 @@ const router = createBrowserRouter([
       { path: "risks/:id/edit", element: <Wrap><StaffAddRisk /></Wrap> },
       { path: "kanban", element: <Wrap><StaffKanban /></Wrap> },
       { path: "analytics", element: <Wrap><StaffAnalytics /></Wrap> },
+      { path: "import-export", element: <Wrap><ImportExportPage /></Wrap> },
     ],
   },
 

@@ -62,8 +62,8 @@ export default function Sidebar() {
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="font-display font-bold text-foreground text-sm tracking-wide">ERIMP</p>
-              <p className="text-[10px] text-muted-foreground leading-tight">NIPA Zambia</p>
+              <p className="font-display font-bold text-foreground text-sm tracking-wide">RiskSense</p>
+              <p className="text-[10px] text-muted-foreground leading-tight">Enterprise Risk Platform</p>
             </div>
           </div>
           <button

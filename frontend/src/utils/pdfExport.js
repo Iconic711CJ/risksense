@@ -29,7 +29,7 @@ export function exportSingleRiskPDF(risk, user) {
     doc.setTextColor(100, 116, 139);
     doc.setFont("helvetica", "normal");
     doc.text("NATIONAL INSTITUTE OF PUBLIC ADMINISTRATION (NIPA) ZAMBIA", 20, 14);
-    doc.text("ENTERPRISE RISK INTELLIGENCE & MITIGATION PLATFORM (ERIMP)", pageW - 20, 14, { align: "right" });
+    doc.text("RISKSENSE RISK MANAGEMENT PLATFORM", pageW - 20, 14, { align: "right" });
 
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.3);
@@ -189,7 +189,7 @@ export function exportSingleRiskPDF(risk, user) {
     doc.setFont("helvetica", "normal");
     doc.text(`Exported by: ${user?.full_name || "System User"} (${user?.email || ""})`, 20, pageH - 18);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 20, pageH - 12);
-    doc.text("Page 1 of 1 — Confidential ERIMP Risk Document", pageW - 20, pageH - 12, { align: "right" });
+    doc.text("Page 1 of 1 — Confidential RiskSense Document", pageW - 20, pageH - 12, { align: "right" });
 
     doc.setFillColor(6, 78, 59);
     doc.rect(0, pageH - 4, pageW, 4, "F");

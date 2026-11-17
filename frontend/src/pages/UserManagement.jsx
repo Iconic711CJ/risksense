@@ -71,7 +71,7 @@ function AddUserDialog({ departments, onClose, onCreated }) {
             <label className="text-xs font-semibold text-foreground/80">Email</label>
             <input
               type="email" value={form.email} onChange={(e) => set("email", e.target.value)}
-              placeholder="john@nipa.ac.zm" required
+              placeholder="user@example.com" required
               className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>

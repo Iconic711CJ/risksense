@@ -13,7 +13,7 @@ function addPageHeader(doc, title, pageW) {
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
   doc.setFont("helvetica", "normal");
-  doc.text("ERIMP · Enterprise Risk Intelligence & Mitigation Platform · NIPA Zambia", pageW / 2, 12, { align: "center" });
+  doc.text("RiskSense · Risk Management Platform · NIPA Zambia", pageW / 2, 12, { align: "center" });
   doc.setFontSize(16);
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "bold");
@@ -62,12 +62,12 @@ export default function ReportGenerator({ open, onClose, summary, deptData = [],
       doc.setTextColor(14, 165, 233);
       doc.setFontSize(24);
       doc.setFont("helvetica", "bold");
-      doc.text("ERIMP", pageW / 2, 76, { align: "center" });
+      doc.text("RiskSense", pageW / 2, 76, { align: "center" });
 
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(20);
-      doc.text("Enterprise Risk Intelligence", pageW / 2, 110, { align: "center" });
-      doc.text("& Mitigation Platform", pageW / 2, 120, { align: "center" });
+      doc.text("Risk Management", pageW / 2, 110, { align: "center" });
+      doc.text("Platform", pageW / 2, 120, { align: "center" });
 
       doc.setDrawColor(226, 232, 240);
       doc.setLineWidth(0.3);
@@ -337,7 +337,7 @@ export default function ReportGenerator({ open, onClose, summary, deptData = [],
 
       // Save
       const dateStr = new Date().toISOString().slice(0, 10);
-      doc.save(`NIPA_ERIMP_Report_${dateStr}.pdf`);
+      doc.save(`NIPA_RiskSense_Report_${dateStr}.pdf`);
       toast.success("PDF report downloaded successfully");
       onClose();
     } catch (err) {
@@ -361,7 +361,7 @@ export default function ReportGenerator({ open, onClose, summary, deptData = [],
             </div>
             <div>
               <h3 className="text-base font-display font-bold text-foreground">Generate PDF Report</h3>
-              <p className="text-xs text-muted-foreground">NIPA ERIMP Risk Management Report</p>
+              <p className="text-xs text-muted-foreground">NIPA RiskSense Risk Management Report</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground">
